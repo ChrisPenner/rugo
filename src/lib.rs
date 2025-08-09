@@ -71,10 +71,26 @@ impl GoGame {
 
     pub fn handle_click(&mut self, x: f32, y: f32) {
         console_log!("Click at ({}, {})", x, y);
-        // Convert screen coordinates to board coordinates
-        // This is a simplified version - you'll want to improve this
-        let board_x = ((x + 1.0) / 2.0 * BOARD_SIZE as f32) as usize;
-        let board_y = ((y + 1.0) / 2.0 * BOARD_SIZE as f32) as usize;
+        // Convert normalized coordinates (-1 to 1) to board coordinates (0 to 18)
+        // Use rounding instead of truncation to snap to nearest intersection
+        let board_x = (((x + 1.0) / 2.0 * (BOARD_SIZE - 1) as f32) + 0.5) as usize;
+        let board_y = (((y + 1.0) / 2.0 * (BOARD_SIZE - 1) as f32) + 0.5) as usize;
+        
+        if board_x < BOARD_SIZE && board_y < BOARD_SIZE {
+            if self.board[board_y][board_x] == StoneState::Empty {
+                self.board[board_y][board_x] = self.current_player;
+                self.current_player = match self.current_player {
+                    StoneState::Black => StoneState::White,
+                    StoneState::White => StoneState::Black,
+                    StoneState::Empty => StoneState::Black,
+                };
+                console_log!("Placed stone at ({}, {})", board_x, board_y);
+            }
+        }
+    }
+
+    pub fn handle_board_click(&mut self, board_x: usize, board_y: usize) {
+        console_log!("Board click at ({}, {})", board_x, board_y);
         
         if board_x < BOARD_SIZE && board_y < BOARD_SIZE {
             if self.board[board_y][board_x] == StoneState::Empty {

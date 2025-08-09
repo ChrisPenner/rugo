@@ -123,15 +123,26 @@
                 const canvasX = event.clientX - rect.left;
                 const canvasY = event.clientY - rect.top;
                 
-                // Convert to normalized coordinates (-1 to 1)
-                const x = (canvasX / canvas.width) * 2 - 1;
-                const y = -((canvasY / canvas.height) * 2 - 1);
+                // Calculate board layout (same as in drawBoard)
+                const width = canvas.width;
+                const height = canvas.height;
+                const cellSize = Math.min(width, height) / 20;
+                const boardSize = cellSize * 19;
+                const offsetX = (width - boardSize) / 2;
+                const offsetY = (height - boardSize) / 2;
                 
-                try {
-                    game.handle_click(x, y);
-                    drawBoard();
-                } catch (error) {
-                    console.error('Click handling error:', error);
+                // Convert canvas coordinates to board coordinates
+                const boardX = Math.round((canvasX - offsetX) / cellSize);
+                const boardY = Math.round((canvasY - offsetY) / cellSize);
+                
+                // Check if click is within board bounds
+                if (boardX >= 0 && boardX < 19 && boardY >= 0 && boardY < 19) {
+                    try {
+                        game.handle_board_click(boardX, boardY);
+                        drawBoard();
+                    } catch (error) {
+                        console.error('Click handling error:', error);
+                    }
                 }
             });
 
