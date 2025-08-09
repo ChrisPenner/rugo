@@ -255,6 +255,158 @@ impl GoGame {
         self.white_captures
     }
     
+    // Serialize current game state to a compact string format
+    pub fn serialize_state(&self) -> String {
+        let mut state_bytes = Vec::new();
+        
+        // Add board size (1 byte)
+        state_bytes.push(self.board_size as u8);
+        
+        // Add current player (1 byte: 0=empty, 1=black, 2=white)
+        let player_byte = match self.current_player {
+            StoneState::Empty => 0,
+            StoneState::Black => 1,
+            StoneState::White => 2,
+        };
+        state_bytes.push(player_byte);
+        
+        // Add capture counts (4 bytes each, big-endian)
+        state_bytes.extend_from_slice(&self.black_captures.to_be_bytes());
+        state_bytes.extend_from_slice(&self.white_captures.to_be_bytes());
+        
+        // Add board state - use 2 bits per intersection
+        // Pack 4 intersections per byte to save space
+        let mut board_bytes = Vec::new();
+        let mut current_byte = 0u8;
+        let mut bits_used = 0;
+        
+        for y in 0..self.board_size {
+            for x in 0..self.board_size {
+                let state_value = match self.board[y][x] {
+                    StoneState::Empty => 0u8,
+                    StoneState::Black => 1u8,
+                    StoneState::White => 2u8,
+                };
+                
+                current_byte |= state_value << (6 - bits_used);
+                bits_used += 2;
+                
+                if bits_used == 8 {
+                    board_bytes.push(current_byte);
+                    current_byte = 0;
+                    bits_used = 0;
+                }
+            }
+        }
+        
+        // Add any remaining bits
+        if bits_used > 0 {
+            board_bytes.push(current_byte);
+        }
+        
+        state_bytes.extend(board_bytes);
+        
+        // Encode as base64
+        base64_encode(&state_bytes)
+    }
+    
+    // Restore game state from a serialized string
+    pub fn deserialize_state(&mut self, state_str: &str) -> bool {
+        if let Some(state_bytes) = base64_decode(state_str) {
+            if state_bytes.len() < 10 {
+                return false; // Too short to be valid
+            }
+            
+            let mut idx = 0;
+            
+            // Read board size
+            let board_size = state_bytes[idx] as usize;
+            if board_size != 9 && board_size != 13 && board_size != 19 {
+                return false; // Invalid board size
+            }
+            idx += 1;
+            
+            // Read current player
+            let player_byte = state_bytes[idx];
+            let current_player = match player_byte {
+                0 => StoneState::Empty,
+                1 => StoneState::Black,
+                2 => StoneState::White,
+                _ => return false,
+            };
+            idx += 1;
+            
+            // Read capture counts
+            if idx + 8 > state_bytes.len() {
+                return false;
+            }
+            let black_captures = u32::from_be_bytes([
+                state_bytes[idx], state_bytes[idx + 1],
+                state_bytes[idx + 2], state_bytes[idx + 3]
+            ]);
+            idx += 4;
+            let white_captures = u32::from_be_bytes([
+                state_bytes[idx], state_bytes[idx + 1],
+                state_bytes[idx + 2], state_bytes[idx + 3]
+            ]);
+            idx += 4;
+            
+            // Read board state
+            let total_intersections = board_size * board_size;
+            let expected_board_bytes = (total_intersections + 3) / 4; // Round up
+            
+            if idx + expected_board_bytes > state_bytes.len() {
+                return false;
+            }
+            
+            // Clear current board
+            self.board = [[StoneState::Empty; MAX_BOARD_SIZE]; MAX_BOARD_SIZE];
+            
+            let mut intersection_idx = 0;
+            for &byte in &state_bytes[idx..idx + expected_board_bytes] {
+                for bit_pos in (0..8).step_by(2).rev() {
+                    if intersection_idx >= total_intersections {
+                        break;
+                    }
+                    
+                    let state_value = (byte >> bit_pos) & 0b11;
+                    let state = match state_value {
+                        0 => StoneState::Empty,
+                        1 => StoneState::Black,
+                        2 => StoneState::White,
+                        _ => StoneState::Empty, // Invalid, treat as empty
+                    };
+                    
+                    let y = intersection_idx / board_size;
+                    let x = intersection_idx % board_size;
+                    self.board[y][x] = state;
+                    intersection_idx += 1;
+                }
+            }
+            
+            // Update game state
+            self.board_size = board_size;
+            self.current_player = current_player;
+            self.black_captures = black_captures;
+            self.white_captures = white_captures;
+            
+            // Reset history to current state
+            let new_state = GameState {
+                board: self.board,
+                current_player: self.current_player,
+                black_captures: self.black_captures,
+                white_captures: self.white_captures,
+            };
+            self.history = vec![new_state];
+            self.history_index = 0;
+            
+            console_log!("Successfully deserialized game state");
+            true
+        } else {
+            false
+        }
+    }
+    
     // Check if a group has any liberties (empty adjacent spaces)
     fn has_liberties(&self, x: usize, y: usize, color: StoneState, visited: &mut [[bool; MAX_BOARD_SIZE]; MAX_BOARD_SIZE]) -> bool {
         if visited[y][x] || self.board[y][x] != color {
@@ -337,6 +489,78 @@ impl GoGame {
             }
         }
     }
+}
+
+// Simple base64 encoding using web-safe characters
+fn base64_encode(data: &[u8]) -> String {
+    const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    let mut result = String::new();
+    
+    for chunk in data.chunks(3) {
+        let b1 = chunk[0] as usize;
+        let b2 = if chunk.len() > 1 { chunk[1] as usize } else { 0 };
+        let b3 = if chunk.len() > 2 { chunk[2] as usize } else { 0 };
+        
+        let combined = (b1 << 16) | (b2 << 8) | b3;
+        
+        result.push(CHARS[(combined >> 18) & 63] as char);
+        result.push(CHARS[(combined >> 12) & 63] as char);
+        if chunk.len() > 1 {
+            result.push(CHARS[(combined >> 6) & 63] as char);
+        }
+        if chunk.len() > 2 {
+            result.push(CHARS[combined & 63] as char);
+        }
+    }
+    
+    result
+}
+
+// Simple base64 decoding
+fn base64_decode(data: &str) -> Option<Vec<u8>> {
+    const DECODE_TABLE: [u8; 128] = {
+        let mut table = [255u8; 128];
+        let chars = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+        let mut i = 0;
+        while i < chars.len() {
+            table[chars[i] as usize] = i as u8;
+            i += 1;
+        }
+        table
+    };
+    
+    let mut result = Vec::new();
+    let chars: Vec<u8> = data.bytes().collect();
+    
+    for chunk in chars.chunks(4) {
+        if chunk.is_empty() {
+            break;
+        }
+        
+        let mut values = [0u8; 4];
+        for (i, &c) in chunk.iter().enumerate() {
+            if c as usize >= 128 {
+                return None;
+            }
+            let val = DECODE_TABLE[c as usize];
+            if val == 255 {
+                return None;
+            }
+            values[i] = val;
+        }
+        
+        let combined = (values[0] as u32) << 18 | (values[1] as u32) << 12 | (values[2] as u32) << 6 | values[3] as u32;
+        
+        result.push((combined >> 16) as u8);
+        if chunk.len() > 2 {
+            result.push((combined >> 8) as u8);
+        }
+        if chunk.len() > 3 {
+            result.push(combined as u8);
+        }
+    }
+    
+    Some(result)
 }
 
 // Initialize function to be called from JavaScript

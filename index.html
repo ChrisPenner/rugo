@@ -129,6 +129,7 @@
         const canvas = document.getElementById('game-canvas');
         const statusText = document.getElementById('status-text');
         const currentPlayerText = document.getElementById('current-player');
+        let suppressUrlUpdate = false; // Flag to prevent infinite loops
 
         async function initGame() {
             try {
@@ -149,6 +150,11 @@
                 statusText.textContent = `Go Game Ready! (${boardSize}×${boardSize})`;
                 
                 setupEventListeners();
+                
+                // Try to load state from URL, otherwise draw fresh board
+                if (!loadStateFromUrl()) {
+                    updateUrl(); // Set initial state in URL
+                }
                 drawBoard();
                 
             } catch (error) {
@@ -188,6 +194,7 @@
                         game.handle_board_click(boardX, boardY);
                         drawBoard();
                         updateUndoRedoButtons();
+                        updateUrl();
                     } catch (error) {
                         console.error('Click handling error:', error);
                     }
@@ -204,6 +211,7 @@
                 if (game && game.undo()) {
                     drawBoard();
                     updateUndoRedoButtons();
+                    updateUrl();
                 }
             });
 
@@ -212,6 +220,7 @@
                 if (game && game.redo()) {
                     drawBoard();
                     updateUndoRedoButtons();
+                    updateUrl();
                 }
             });
 
@@ -245,6 +254,54 @@
             document.getElementById('undo-btn').disabled = !game.can_undo();
             document.getElementById('redo-btn').disabled = !game.can_redo();
         }
+        
+        // Update URL with current game state
+        function updateUrl() {
+            if (!game || suppressUrlUpdate) return;
+            
+            try {
+                const state = game.serialize_state();
+                const url = new URL(window.location);
+                url.searchParams.set('state', state);
+                window.history.replaceState(null, '', url);
+            } catch (error) {
+                console.warn('Failed to update URL:', error);
+            }
+        }
+        
+        // Load game state from URL
+        function loadStateFromUrl() {
+            const url = new URL(window.location);
+            const stateParam = url.searchParams.get('state');
+            
+            if (stateParam && game) {
+                suppressUrlUpdate = true;
+                try {
+                    if (game.deserialize_state(stateParam)) {
+                        console.log('Successfully loaded state from URL');
+                        // Update board size selector to match loaded state
+                        const boardSize = game.get_board_size();
+                        document.getElementById('board-size').value = boardSize.toString();
+                        return true;
+                    } else {
+                        console.warn('Failed to deserialize state from URL');
+                    }
+                } catch (error) {
+                    console.warn('Error loading state from URL:', error);
+                } finally {
+                    suppressUrlUpdate = false;
+                }
+            }
+            return false;
+        }
+        
+        // Handle browser back/forward navigation
+        window.addEventListener('popstate', () => {
+            if (game && loadStateFromUrl()) {
+                drawBoard();
+                updateUndoRedoButtons();
+            }
+        });
         
         function drawBoard() {
             if (!game) return;
