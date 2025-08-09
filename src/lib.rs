@@ -24,6 +24,13 @@ pub enum StoneState {
     White,
 }
 
+// Game history for undo/redo
+#[derive(Clone, Debug)]
+struct GameState {
+    board: [[StoneState; MAX_BOARD_SIZE]; MAX_BOARD_SIZE],
+    current_player: StoneState,
+}
+
 // Simple Go game struct without WebGPU for now
 #[wasm_bindgen]
 pub struct GoGame {
@@ -32,6 +39,8 @@ pub struct GoGame {
     current_player: StoneState,
     canvas_width: u32,
     canvas_height: u32,
+    history: Vec<GameState>,
+    history_index: usize,
 }
 
 #[wasm_bindgen]
@@ -55,12 +64,20 @@ impl GoGame {
             }
         };
         
+        let initial_board = [[StoneState::Empty; MAX_BOARD_SIZE]; MAX_BOARD_SIZE];
+        let initial_state = GameState {
+            board: initial_board,
+            current_player: StoneState::Black,
+        };
+        
         GoGame {
-            board: [[StoneState::Empty; MAX_BOARD_SIZE]; MAX_BOARD_SIZE],
+            board: initial_board,
             board_size: valid_size,
             current_player: StoneState::Black,
             canvas_width: canvas.width(),
             canvas_height: canvas.height(),
+            history: vec![initial_state],
+            history_index: 0,
         }
     }
     
@@ -112,15 +129,63 @@ impl GoGame {
         
         if board_x < self.board_size && board_y < self.board_size {
             if self.board[board_y][board_x] == StoneState::Empty {
+                // Remove any future history if we're not at the end
+                if self.history_index < self.history.len() - 1 {
+                    self.history.truncate(self.history_index + 1);
+                }
+                
                 self.board[board_y][board_x] = self.current_player;
                 self.current_player = match self.current_player {
                     StoneState::Black => StoneState::White,
                     StoneState::White => StoneState::Black,
                     StoneState::Empty => StoneState::Black,
                 };
-                console_log!("Placed stone at ({}, {})", board_x, board_y);
+                
+                // Save the new state after the move is complete
+                let new_state = GameState {
+                    board: self.board,
+                    current_player: self.current_player,
+                };
+                self.history.push(new_state);
+                self.history_index = self.history.len() - 1;
+                
+                console_log!("Placed stone at ({}, {}), history index: {}", board_x, board_y, self.history_index);
             }
         }
+    }
+    
+    pub fn undo(&mut self) -> bool {
+        if self.can_undo() {
+            self.history_index -= 1;
+            let state = &self.history[self.history_index];
+            self.board = state.board;
+            self.current_player = state.current_player;
+            console_log!("Undo: moved to state {}", self.history_index);
+            true
+        } else {
+            false
+        }
+    }
+    
+    pub fn redo(&mut self) -> bool {
+        if self.can_redo() {
+            self.history_index += 1;
+            let state = &self.history[self.history_index];
+            self.board = state.board;
+            self.current_player = state.current_player;
+            console_log!("Redo: moved to state {}", self.history_index);
+            true
+        } else {
+            false
+        }
+    }
+    
+    pub fn can_undo(&self) -> bool {
+        self.history_index > 0
+    }
+    
+    pub fn can_redo(&self) -> bool {
+        self.history_index < self.history.len() - 1
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {

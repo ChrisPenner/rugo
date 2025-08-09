@@ -47,6 +47,16 @@
             background-color: #45a049;
         }
         
+        button:disabled {
+            background-color: #cccccc;
+            color: #666666;
+            cursor: not-allowed;
+        }
+        
+        button:disabled:hover {
+            background-color: #cccccc;
+        }
+        
         .status {
             margin-top: 10px;
             padding: 10px;
@@ -97,6 +107,8 @@
                 </select>
             </div>
             <button id="new-game-btn">New Game</button>
+            <button id="undo-btn" disabled>Undo</button>
+            <button id="redo-btn" disabled>Redo</button>
             <button id="pass-btn">Pass</button>
         </div>
         
@@ -171,6 +183,7 @@
                     try {
                         game.handle_board_click(boardX, boardY);
                         drawBoard();
+                        updateUndoRedoButtons();
                     } catch (error) {
                         console.error('Click handling error:', error);
                     }
@@ -180,6 +193,22 @@
             // New game button
             document.getElementById('new-game-btn').addEventListener('click', () => {
                 initGame();
+            });
+
+            // Undo button
+            document.getElementById('undo-btn').addEventListener('click', () => {
+                if (game && game.undo()) {
+                    drawBoard();
+                    updateUndoRedoButtons();
+                }
+            });
+
+            // Redo button
+            document.getElementById('redo-btn').addEventListener('click', () => {
+                if (game && game.redo()) {
+                    drawBoard();
+                    updateUndoRedoButtons();
+                }
             });
 
             // Pass button
@@ -202,6 +231,17 @@
             });
         }
 
+        function updateUndoRedoButtons() {
+            if (!game) {
+                document.getElementById('undo-btn').disabled = true;
+                document.getElementById('redo-btn').disabled = true;
+                return;
+            }
+            
+            document.getElementById('undo-btn').disabled = !game.can_undo();
+            document.getElementById('redo-btn').disabled = !game.can_redo();
+        }
+        
         function drawBoard() {
             if (!game) return;
             
