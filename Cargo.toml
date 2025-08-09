@@ -1,0 +1,49 @@
+[package]
+name = "rugo"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wgpu = "0.19"
+winit = "0.29"
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = [
+  "console",
+  "Document",
+  "Element",
+  "HtmlCanvasElement",
+  "Window",
+  "WebGl2RenderingContext",
+  "CanvasRenderingContext2d",
+] }
+js-sys = "0.3"
+wasm-bindgen-futures = "0.4"
+bytemuck = { version = "1.4", features = ["derive"] }
+glam = "0.25"
+log = "0.4"
+console_log = "1.0"
+console_error_panic_hook = "0.1"
+cfg-if = "1"
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  "console",
+  "Document",
+  "Element",
+  "HtmlCanvasElement",
+  "Window",
+  "CanvasRenderingContext2d",
+  "ImageData",
+  "MouseEvent",
+  "EventTarget",
+  "AddEventListenerOptions",
+]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+web-sys = "0.3"
+js-sys = "0.3"

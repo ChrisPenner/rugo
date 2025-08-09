@@ -1,0 +1,23 @@
+{
+  "name": "rugo",
+  "version": "0.1.0",
+  "description": "A browser-based Go board game using WebGPU and Rust",
+  "main": "index.html",
+  "scripts": {
+    "build": "./build.sh",
+    "serve": "python3 -m http.server 8000",
+    "dev": "./build.sh && python3 -m http.server 8000"
+  },
+  "devDependencies": {
+    "serve": "^14.0.0"
+  },
+  "keywords": [
+    "webgpu",
+    "rust",
+    "wasm",
+    "go",
+    "board-game"
+  ],
+  "author": "",
+  "license": "MIT"
+}

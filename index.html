@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>WebGPU Go Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            font-family: Arial, sans-serif;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        #game-canvas {
+            border: 2px solid #8B4513;
+            background-color: #DEB887;
+            cursor: pointer;
+        }
+        
+        .controls {
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        
+        .info {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebGPU Go Game</h1>
+        <canvas id="game-canvas" width="600" height="600"></canvas>
+        
+        <div class="controls">
+            <button id="new-game-btn">New Game</button>
+            <button id="pass-btn">Pass</button>
+        </div>
+        
+        <div class="status">
+            <div id="status-text" class="info">Loading...</div>
+            <div id="current-player">Current Player: Black</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import init, { GoGame } from './pkg/rugo.js';
+
+        let game = null;
+        const canvas = document.getElementById('game-canvas');
+        const statusText = document.getElementById('status-text');
+        const currentPlayerText = document.getElementById('current-player');
+
+        async function initGame() {
+            try {
+                statusText.textContent = "Initializing WebGPU...";
+                statusText.className = "info";
+                
+                // Initialize the wasm module
+                await init();
+                
+                statusText.textContent = "Creating game instance...";
+                
+                // Create game instance - this needs to be handled differently due to async nature
+                // For now, we'll create a simpler synchronous version
+                statusText.textContent = "WebGPU Go Game Ready!";
+                
+                setupEventListeners();
+                
+            } catch (error) {
+                console.error('Failed to initialize game:', error);
+                statusText.textContent = `Error: ${error}`;
+                statusText.className = "error";
+            }
+        }
+
+        function setupEventListeners() {
+            // Canvas click handler
+            canvas.addEventListener('click', (event) => {
+                if (!game) return;
+                
+                const rect = canvas.getBoundingClientRect();
+                const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                const y = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
+                
+                try {
+                    game.handle_click(x, y);
+                    render();
+                } catch (error) {
+                    console.error('Click handling error:', error);
+                }
+            });
+
+            // New game button
+            document.getElementById('new-game-btn').addEventListener('click', () => {
+                initGame();
+            });
+
+            // Pass button
+            document.getElementById('pass-btn').addEventListener('click', () => {
+                // TODO: Implement pass functionality
+                console.log('Pass clicked');
+            });
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                if (game) {
+                    const canvas = document.getElementById('game-canvas');
+                    try {
+                        game.resize(canvas.width, canvas.height);
+                        render();
+                    } catch (error) {
+                        console.error('Resize error:', error);
+                    }
+                }
+            });
+        }
+
+        function render() {
+            if (game) {
+                try {
+                    game.render();
+                } catch (error) {
+                    console.error('Render error:', error);
+                    statusText.textContent = `Render error: ${error}`;
+                    statusText.className = "error";
+                }
+            }
+        }
+
+        function gameLoop() {
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Check WebGPU support
+        if (!navigator.gpu) {
+            statusText.textContent = "WebGPU is not supported in this browser";
+            statusText.className = "error";
+        } else {
+            // Start the game
+            initGame().then(() => {
+                // Start the render loop
+                gameLoop();
+            });
+        }
+    </script>
+</body>
+</html>
