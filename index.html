@@ -130,6 +130,7 @@
         const statusText = document.getElementById('status-text');
         const currentPlayerText = document.getElementById('current-player');
         let suppressUrlUpdate = false; // Flag to prevent infinite loops
+        let eventListenersSetup = false; // Flag to prevent duplicate event listeners
 
         async function initGame() {
             try {
@@ -165,6 +166,9 @@
         }
 
         function setupEventListeners() {
+            if (eventListenersSetup) return; // Prevent duplicate listeners
+            eventListenersSetup = true;
+            
             // Canvas click handler
             canvas.addEventListener('click', (event) => {
                 if (!game) return;
@@ -199,6 +203,15 @@
                         console.error('Click handling error:', error);
                     }
                 }
+            });
+
+            // Board size selector
+            document.getElementById('board-size').addEventListener('change', () => {
+                // Clear URL state when user changes board size manually
+                const url = new URL(window.location);
+                url.searchParams.delete('state');
+                window.history.replaceState(null, '', url);
+                initGame(); // Start new game with selected size
             });
 
             // New game button
