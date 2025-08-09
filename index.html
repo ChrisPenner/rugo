@@ -191,8 +191,8 @@
             const offsetX = (width - boardSize) / 2;
             const offsetY = (height - boardSize) / 2;
             
-            // Draw horizontal lines
-            for (let i = 0; i < 19; i++) {
+            // Draw horizontal lines (need 20 lines to create 19 rows)
+            for (let i = 0; i <= 19; i++) {
                 const y = offsetY + i * cellSize;
                 ctx.beginPath();
                 ctx.moveTo(offsetX, y);
@@ -200,8 +200,8 @@
                 ctx.stroke();
             }
             
-            // Draw vertical lines
-            for (let i = 0; i < 19; i++) {
+            // Draw vertical lines (need 20 lines to create 19 columns)
+            for (let i = 0; i <= 19; i++) {
                 const x = offsetX + i * cellSize;
                 ctx.beginPath();
                 ctx.moveTo(x, offsetY);
