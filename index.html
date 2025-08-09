@@ -195,12 +195,19 @@
                 // Check if click is within board bounds
                 if (boardX >= 0 && boardX < currentBoardSize && boardY >= 0 && boardY < currentBoardSize) {
                     try {
-                        game.handle_board_click(boardX, boardY);
-                        drawBoard();
-                        updateUndoRedoButtons();
-                        updateUrl();
+                        const result = game.handle_board_click(boardX, boardY);
+                        if (result === "Move successful") {
+                            drawBoard();
+                            updateUndoRedoButtons();
+                            updateUrl();
+                            clearErrorMessage();
+                        } else {
+                            // Display error message to user
+                            showErrorMessage(result);
+                        }
                     } catch (error) {
                         console.error('Click handling error:', error);
+                        showErrorMessage('Error processing move: ' + error);
                     }
                 }
             });
@@ -421,6 +428,23 @@
             // Update capture scores
             document.getElementById('black-score').textContent = game.get_black_captures();
             document.getElementById('white-score').textContent = game.get_white_captures();
+        }
+
+        // Error message handling
+        function showErrorMessage(message) {
+            statusText.textContent = message;
+            statusText.className = "error";
+            
+            // Clear error after 3 seconds
+            setTimeout(() => {
+                clearErrorMessage();
+            }, 3000);
+        }
+        
+        function clearErrorMessage() {
+            const boardSize = game ? game.get_board_size() : 19;
+            statusText.textContent = `Go Game Ready! (${boardSize}×${boardSize})`;
+            statusText.className = "info";
         }
 
         // Start the game

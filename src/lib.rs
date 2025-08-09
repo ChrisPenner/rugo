@@ -132,76 +132,85 @@ impl GoGame {
         }
     }
 
-    pub fn handle_board_click(&mut self, board_x: usize, board_y: usize) {
+    pub fn handle_board_click(&mut self, board_x: usize, board_y: usize) -> String {
         console_log!("Board click at ({}, {})", board_x, board_y);
         
-        if board_x < self.board_size && board_y < self.board_size {
-            if self.board[board_y][board_x] == StoneState::Empty {
-                // Remove any future history if we're not at the end
-                if self.history_index < self.history.len() - 1 {
-                    self.history.truncate(self.history_index + 1);
+        if board_x >= self.board_size || board_y >= self.board_size {
+            return "Invalid move: Outside board bounds".to_string();
+        }
+        
+        if self.board[board_y][board_x] != StoneState::Empty {
+            return "Invalid move: Position already occupied".to_string();
+        }
+        
+        let placed_stone = self.current_player;
+        let opponent = match placed_stone {
+            StoneState::Black => StoneState::White,
+            StoneState::White => StoneState::Black,
+            StoneState::Empty => StoneState::Empty,
+        };
+        
+        // Check if this move would be suicidal
+        if self.is_suicidal_move(board_x, board_y, placed_stone) {
+            return "Invalid move: Cannot place stone that would be immediately captured (suicide rule)".to_string();
+        }
+        
+        // Remove any future history if we're not at the end
+        if self.history_index < self.history.len() - 1 {
+            self.history.truncate(self.history_index + 1);
+        }
+        
+        // Place the stone
+        self.board[board_y][board_x] = placed_stone;
+        
+        let mut total_captured = 0;
+        // Check all four adjacent positions for opponent groups to capture
+        let adjacent_positions = [
+            (board_x.wrapping_sub(1), board_y), // Left
+            (board_x + 1, board_y),             // Right
+            (board_x, board_y.wrapping_sub(1)), // Up
+            (board_x, board_y + 1),             // Down
+        ];
+        
+        for (adj_x, adj_y) in adjacent_positions {
+            if adj_x < self.board_size && adj_y < self.board_size {
+                if self.board[adj_y][adj_x] == opponent {
+                    let captured = self.capture_group_if_no_liberties(adj_x, adj_y, opponent);
+                    total_captured += captured;
                 }
-                
-                // Place the stone
-                let placed_stone = self.current_player;
-                self.board[board_y][board_x] = placed_stone;
-                
-                // Check for captures of opponent stones
-                let opponent = match placed_stone {
-                    StoneState::Black => StoneState::White,
-                    StoneState::White => StoneState::Black,
-                    StoneState::Empty => StoneState::Empty,
-                };
-                
-                let mut total_captured = 0;
-                // Check all four adjacent positions for opponent groups to capture
-                let adjacent_positions = [
-                    (board_x.wrapping_sub(1), board_y), // Left
-                    (board_x + 1, board_y),             // Right
-                    (board_x, board_y.wrapping_sub(1)), // Up
-                    (board_x, board_y + 1),             // Down
-                ];
-                
-                for (adj_x, adj_y) in adjacent_positions {
-                    if adj_x < self.board_size && adj_y < self.board_size {
-                        if self.board[adj_y][adj_x] == opponent {
-                            let captured = self.capture_group_if_no_liberties(adj_x, adj_y, opponent);
-                            total_captured += captured;
-                        }
-                    }
-                }
-                
-                // Update capture count
-                match placed_stone {
-                    StoneState::Black => self.black_captures += total_captured,
-                    StoneState::White => self.white_captures += total_captured,
-                    StoneState::Empty => {},
-                }
-                
-                if total_captured > 0 {
-                    console_log!("Captured {} stones", total_captured);
-                }
-                
-                // Switch players
-                self.current_player = match self.current_player {
-                    StoneState::Black => StoneState::White,
-                    StoneState::White => StoneState::Black,
-                    StoneState::Empty => StoneState::Black,
-                };
-                
-                // Save the new state after the move is complete
-                let new_state = GameState {
-                    board: self.board,
-                    current_player: self.current_player,
-                    black_captures: self.black_captures,
-                    white_captures: self.white_captures,
-                };
-                self.history.push(new_state);
-                self.history_index = self.history.len() - 1;
-                
-                console_log!("Placed stone at ({}, {}), history index: {}", board_x, board_y, self.history_index);
             }
         }
+        
+        // Update capture count
+        match placed_stone {
+            StoneState::Black => self.black_captures += total_captured,
+            StoneState::White => self.white_captures += total_captured,
+            StoneState::Empty => {},
+        }
+        
+        if total_captured > 0 {
+            console_log!("Captured {} stones", total_captured);
+        }
+        
+        // Switch players
+        self.current_player = match self.current_player {
+            StoneState::Black => StoneState::White,
+            StoneState::White => StoneState::Black,
+            StoneState::Empty => StoneState::Black,
+        };
+        
+        // Save the new state after the move is complete
+        let new_state = GameState {
+            board: self.board,
+            current_player: self.current_player,
+            black_captures: self.black_captures,
+            white_captures: self.white_captures,
+        };
+        self.history.push(new_state);
+        self.history_index = self.history.len() - 1;
+        
+        console_log!("Placed stone at ({}, {}), history index: {}", board_x, board_y, self.history_index);
+        "Move successful".to_string()
     }
     
     pub fn undo(&mut self) -> bool {
@@ -488,6 +497,77 @@ impl GoGame {
                 self.find_group_stones(adj_x, adj_y, color, group);
             }
         }
+    }
+    
+    // Check if placing a stone would be suicidal (violate suicide rule)
+    fn is_suicidal_move(&self, x: usize, y: usize, color: StoneState) -> bool {
+        // Temporarily place the stone to test
+        let mut test_board = self.board;
+        test_board[y][x] = color;
+        
+        let opponent = match color {
+            StoneState::Black => StoneState::White,
+            StoneState::White => StoneState::Black,
+            StoneState::Empty => return false,
+        };
+        
+        // First check if this move would capture any opponent groups
+        // If it captures opponents, it's not suicidal even if it has no liberties
+        let adjacent_positions = [
+            (x.wrapping_sub(1), y), // Left
+            (x + 1, y),             // Right
+            (x, y.wrapping_sub(1)), // Up
+            (x, y + 1),             // Down
+        ];
+        
+        for (adj_x, adj_y) in adjacent_positions {
+            if adj_x < self.board_size && adj_y < self.board_size {
+                if test_board[adj_y][adj_x] == opponent {
+                    // Check if this opponent group would be captured
+                    let mut visited = [[false; MAX_BOARD_SIZE]; MAX_BOARD_SIZE];
+                    if !self.has_liberties_on_board(&test_board, adj_x, adj_y, opponent, &mut visited) {
+                        // This move would capture opponent stones, so it's not suicidal
+                        return false;
+                    }
+                }
+            }
+        }
+        
+        // Now check if the placed stone (and its group) would have any liberties
+        let mut visited = [[false; MAX_BOARD_SIZE]; MAX_BOARD_SIZE];
+        !self.has_liberties_on_board(&test_board, x, y, color, &mut visited)
+    }
+    
+    // Check liberties on a specific board state (for testing moves)
+    fn has_liberties_on_board(&self, board: &[[StoneState; MAX_BOARD_SIZE]; MAX_BOARD_SIZE], x: usize, y: usize, color: StoneState, visited: &mut [[bool; MAX_BOARD_SIZE]; MAX_BOARD_SIZE]) -> bool {
+        if visited[y][x] || board[y][x] != color {
+            return false;
+        }
+        
+        visited[y][x] = true;
+        
+        // Check all four adjacent positions
+        let adjacent_positions = [
+            (x.wrapping_sub(1), y), // Left
+            (x + 1, y),             // Right
+            (x, y.wrapping_sub(1)), // Up
+            (x, y + 1),             // Down
+        ];
+        
+        for (adj_x, adj_y) in adjacent_positions {
+            if adj_x < self.board_size && adj_y < self.board_size {
+                if board[adj_y][adj_x] == StoneState::Empty {
+                    return true; // Found a liberty
+                } else if board[adj_y][adj_x] == color {
+                    // Check connected stones of the same color
+                    if self.has_liberties_on_board(board, adj_x, adj_y, color, visited) {
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        false
     }
 }
 
