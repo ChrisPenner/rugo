@@ -63,6 +63,23 @@
         .info {
             color: #333;
         }
+        
+        .board-size-controls {
+            margin-bottom: 10px;
+        }
+        
+        .board-size-controls label {
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        
+        .board-size-controls select {
+            padding: 5px 10px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            background-color: white;
+        }
     </style>
 </head>
 <body>
@@ -71,6 +88,14 @@
         <canvas id="game-canvas" width="600" height="600"></canvas>
         
         <div class="controls">
+            <div class="board-size-controls">
+                <label for="board-size">Board Size:</label>
+                <select id="board-size">
+                    <option value="9">9×9</option>
+                    <option value="13">13×13</option>
+                    <option value="19" selected>19×19</option>
+                </select>
+            </div>
             <button id="new-game-btn">New Game</button>
             <button id="pass-btn">Pass</button>
         </div>
@@ -99,10 +124,13 @@
                 
                 statusText.textContent = "Creating game instance...";
                 
-                // Create game instance
-                game = new GoGame(canvas);
+                // Get selected board size
+                const boardSize = parseInt(document.getElementById('board-size').value);
                 
-                statusText.textContent = "Go Game Ready!";
+                // Create game instance with selected size
+                game = GoGame.new_with_size(canvas, boardSize);
+                
+                statusText.textContent = `Go Game Ready! (${boardSize}×${boardSize})`;
                 
                 setupEventListeners();
                 drawBoard();
@@ -123,11 +151,14 @@
                 const canvasX = event.clientX - rect.left;
                 const canvasY = event.clientY - rect.top;
                 
+                // Get current board size
+                const currentBoardSize = game.get_board_size();
+                
                 // Calculate board layout (same as in drawBoard)
                 const width = canvas.width;
                 const height = canvas.height;
-                const cellSize = Math.min(width, height) / 20;
-                const boardSize = cellSize * 19;
+                const cellSize = Math.min(width, height) / (currentBoardSize + 1);
+                const boardSize = cellSize * currentBoardSize;
                 const offsetX = (width - boardSize) / 2;
                 const offsetY = (height - boardSize) / 2;
                 
@@ -136,7 +167,7 @@
                 const boardY = Math.round((canvasY - offsetY) / cellSize);
                 
                 // Check if click is within board bounds
-                if (boardX >= 0 && boardX < 19 && boardY >= 0 && boardY < 19) {
+                if (boardX >= 0 && boardX < currentBoardSize && boardY >= 0 && boardY < currentBoardSize) {
                     try {
                         game.handle_board_click(boardX, boardY);
                         drawBoard();
@@ -178,6 +209,9 @@
             const width = canvas.width;
             const height = canvas.height;
             
+            // Get current board size
+            const currentBoardSize = game.get_board_size();
+            
             // Clear canvas
             ctx.fillStyle = '#DEB887';
             ctx.fillRect(0, 0, width, height);
@@ -186,35 +220,48 @@
             ctx.strokeStyle = '#000';
             ctx.lineWidth = 1;
             
-            const cellSize = Math.min(width, height) / 20;
-            const boardSize = cellSize * 19;
+            const cellSize = Math.min(width, height) / (currentBoardSize + 1);
+            const boardSize = cellSize * currentBoardSize;
             const offsetX = (width - boardSize) / 2;
             const offsetY = (height - boardSize) / 2;
             
-            // Draw horizontal lines (need 20 lines to create 19 rows)
-            for (let i = 0; i <= 19; i++) {
+            // Draw horizontal lines (need boardSize lines for boardSize intersections)
+            for (let i = 0; i < currentBoardSize; i++) {
                 const y = offsetY + i * cellSize;
                 ctx.beginPath();
                 ctx.moveTo(offsetX, y);
-                ctx.lineTo(offsetX + boardSize, y);
+                ctx.lineTo(offsetX + boardSize - cellSize, y);
                 ctx.stroke();
             }
             
-            // Draw vertical lines (need 20 lines to create 19 columns)
-            for (let i = 0; i <= 19; i++) {
+            // Draw vertical lines (need boardSize lines for boardSize intersections)
+            for (let i = 0; i < currentBoardSize; i++) {
                 const x = offsetX + i * cellSize;
                 ctx.beginPath();
                 ctx.moveTo(x, offsetY);
-                ctx.lineTo(x, offsetY + boardSize);
+                ctx.lineTo(x, offsetY + boardSize - cellSize);
                 ctx.stroke();
             }
             
-            // Draw star points
-            const starPoints = [
-                [3, 3], [9, 3], [15, 3],
-                [3, 9], [9, 9], [15, 9],
-                [3, 15], [9, 15], [15, 15]
-            ];
+            // Draw star points based on board size
+            let starPoints = [];
+            if (currentBoardSize === 19) {
+                starPoints = [
+                    [3, 3], [9, 3], [15, 3],
+                    [3, 9], [9, 9], [15, 9],
+                    [3, 15], [9, 15], [15, 15]
+                ];
+            } else if (currentBoardSize === 13) {
+                starPoints = [
+                    [3, 3], [3, 9], [9, 3], [9, 9], // corners
+                    [6, 6] // center
+                ];
+            } else if (currentBoardSize === 9) {
+                starPoints = [
+                    [2, 2], [2, 6], [6, 2], [6, 6], // corners  
+                    [4, 4] // center
+                ];
+            }
             
             ctx.fillStyle = '#000';
             for (let [sx, sy] of starPoints) {
@@ -226,8 +273,8 @@
             }
             
             // Draw stones
-            for (let y = 0; y < 19; y++) {
-                for (let x = 0; x < 19; x++) {
+            for (let y = 0; y < currentBoardSize; y++) {
+                for (let x = 0; x < currentBoardSize; x++) {
                     const state = game.get_board_state(x, y);
                     if (state !== 0) {
                         const centerX = offsetX + x * cellSize;

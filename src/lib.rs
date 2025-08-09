@@ -14,7 +14,7 @@ macro_rules! console_log {
 }
 
 // Go game constants
-const BOARD_SIZE: usize = 19; // Standard Go board is 19x19
+const MAX_BOARD_SIZE: usize = 19; // Maximum supported board size
 
 // Game state
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -27,7 +27,8 @@ pub enum StoneState {
 // Simple Go game struct without WebGPU for now
 #[wasm_bindgen]
 pub struct GoGame {
-    board: [[StoneState; BOARD_SIZE]; BOARD_SIZE],
+    board: [[StoneState; MAX_BOARD_SIZE]; MAX_BOARD_SIZE],
+    board_size: usize,
     current_player: StoneState,
     canvas_width: u32,
     canvas_height: u32,
@@ -37,13 +38,26 @@ pub struct GoGame {
 impl GoGame {
     #[wasm_bindgen(constructor)]
     pub fn new(canvas: HtmlCanvasElement) -> GoGame {
-        console_log!("Initializing Go game...");
+        Self::new_with_size(canvas, 19)
+    }
+    
+    pub fn new_with_size(canvas: HtmlCanvasElement, board_size: usize) -> GoGame {
+        console_log!("Initializing Go game with {}x{} board...", board_size, board_size);
         
         // Initialize logging
         console_error_panic_hook::set_once();
         
+        let valid_size = match board_size {
+            9 | 13 | 19 => board_size,
+            _ => {
+                console_log!("Invalid board size {}, defaulting to 19x19", board_size);
+                19
+            }
+        };
+        
         GoGame {
-            board: [[StoneState::Empty; BOARD_SIZE]; BOARD_SIZE],
+            board: [[StoneState::Empty; MAX_BOARD_SIZE]; MAX_BOARD_SIZE],
+            board_size: valid_size,
             current_player: StoneState::Black,
             canvas_width: canvas.width(),
             canvas_height: canvas.height(),
@@ -51,7 +65,7 @@ impl GoGame {
     }
     
     pub fn get_board_state(&self, x: usize, y: usize) -> u8 {
-        if x >= BOARD_SIZE || y >= BOARD_SIZE {
+        if x >= self.board_size || y >= self.board_size {
             return 0;
         }
         match self.board[y][x] {
@@ -59,6 +73,10 @@ impl GoGame {
             StoneState::Black => 1,
             StoneState::White => 2,
         }
+    }
+    
+    pub fn get_board_size(&self) -> usize {
+        self.board_size
     }
     
     pub fn get_current_player(&self) -> u8 {
@@ -71,12 +89,12 @@ impl GoGame {
 
     pub fn handle_click(&mut self, x: f32, y: f32) {
         console_log!("Click at ({}, {})", x, y);
-        // Convert normalized coordinates (-1 to 1) to board coordinates (0 to 18)
+        // Convert normalized coordinates (-1 to 1) to board coordinates
         // Use rounding instead of truncation to snap to nearest intersection
-        let board_x = (((x + 1.0) / 2.0 * (BOARD_SIZE - 1) as f32) + 0.5) as usize;
-        let board_y = (((y + 1.0) / 2.0 * (BOARD_SIZE - 1) as f32) + 0.5) as usize;
+        let board_x = (((x + 1.0) / 2.0 * (self.board_size - 1) as f32) + 0.5) as usize;
+        let board_y = (((y + 1.0) / 2.0 * (self.board_size - 1) as f32) + 0.5) as usize;
         
-        if board_x < BOARD_SIZE && board_y < BOARD_SIZE {
+        if board_x < self.board_size && board_y < self.board_size {
             if self.board[board_y][board_x] == StoneState::Empty {
                 self.board[board_y][board_x] = self.current_player;
                 self.current_player = match self.current_player {
@@ -92,7 +110,7 @@ impl GoGame {
     pub fn handle_board_click(&mut self, board_x: usize, board_y: usize) {
         console_log!("Board click at ({}, {})", board_x, board_y);
         
-        if board_x < BOARD_SIZE && board_y < BOARD_SIZE {
+        if board_x < self.board_size && board_y < self.board_size {
             if self.board[board_y][board_x] == StoneState::Empty {
                 self.board[board_y][board_x] = self.current_player;
                 self.current_player = match self.current_player {
