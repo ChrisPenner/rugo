@@ -158,9 +158,9 @@
                 const width = canvas.width;
                 const height = canvas.height;
                 const cellSize = Math.min(width, height) / (currentBoardSize + 1);
-                const boardSize = cellSize * currentBoardSize;
-                const offsetX = (width - boardSize) / 2;
-                const offsetY = (height - boardSize) / 2;
+                const boardPixelSize = cellSize * (currentBoardSize - 1);
+                const offsetX = (width - boardPixelSize) / 2;
+                const offsetY = (height - boardPixelSize) / 2;
                 
                 // Convert canvas coordinates to board coordinates
                 const boardX = Math.round((canvasX - offsetX) / cellSize);
@@ -221,16 +221,16 @@
             ctx.lineWidth = 1;
             
             const cellSize = Math.min(width, height) / (currentBoardSize + 1);
-            const boardSize = cellSize * currentBoardSize;
-            const offsetX = (width - boardSize) / 2;
-            const offsetY = (height - boardSize) / 2;
+            const boardPixelSize = cellSize * (currentBoardSize - 1);
+            const offsetX = (width - boardPixelSize) / 2;
+            const offsetY = (height - boardPixelSize) / 2;
             
             // Draw horizontal lines (need boardSize lines for boardSize intersections)
             for (let i = 0; i < currentBoardSize; i++) {
                 const y = offsetY + i * cellSize;
                 ctx.beginPath();
                 ctx.moveTo(offsetX, y);
-                ctx.lineTo(offsetX + boardSize - cellSize, y);
+                ctx.lineTo(offsetX + boardPixelSize, y);
                 ctx.stroke();
             }
             
@@ -239,7 +239,7 @@
                 const x = offsetX + i * cellSize;
                 ctx.beginPath();
                 ctx.moveTo(x, offsetY);
-                ctx.lineTo(x, offsetY + boardSize - cellSize);
+                ctx.lineTo(x, offsetY + boardPixelSize);
                 ctx.stroke();
             }
             
