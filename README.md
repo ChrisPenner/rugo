@@ -2,7 +2,7 @@
 
 A browser-based implementation of the ancient board game Go (Weiqi/Baduk) using Rust compiled to WebAssembly. Optimized for desktop, tablet, and mobile devices.
 
-🎮 **[Play Online](https://[YOUR-USERNAME].github.io/rugo/)** (GitHub Pages)
+🎮 **[Play Online](https://chrispenner.ca/rugo/)** (GitHub Pages)
 
 ## Features
 
