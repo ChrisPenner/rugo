@@ -1,1 +1,27 @@
+# Rust build artifacts
 /target
+Cargo.lock
+
+# WebAssembly build artifacts (will be built by CI)
+# pkg/
+
+# Node.js (if using npm tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp

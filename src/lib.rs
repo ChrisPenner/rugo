@@ -264,6 +264,39 @@ impl GoGame {
         self.white_captures
     }
     
+    // Handle pass move - player passes their turn
+    pub fn handle_pass(&mut self) -> String {
+        console_log!("Player {} passes", match self.current_player {
+            StoneState::Black => "Black",
+            StoneState::White => "White",
+            StoneState::Empty => "Empty",
+        });
+        
+        // Remove any future history if we're not at the end
+        if self.history_index < self.history.len() - 1 {
+            self.history.truncate(self.history_index + 1);
+        }
+        
+        // Switch players
+        self.current_player = match self.current_player {
+            StoneState::Black => StoneState::White,
+            StoneState::White => StoneState::Black,
+            StoneState::Empty => StoneState::Black,
+        };
+        
+        // Save the new state after the pass
+        let new_state = GameState {
+            board: self.board,
+            current_player: self.current_player,
+            black_captures: self.black_captures,
+            white_captures: self.white_captures,
+        };
+        self.history.push(new_state);
+        self.history_index = self.history.len() - 1;
+        
+        "Pass successful".to_string()
+    }
+    
     // Serialize current game state to a compact string format
     pub fn serialize_state(&self) -> String {
         let mut state_bytes = Vec::new();

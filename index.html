@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Rugo - Go Game</title>
+    <title>Go</title>
     <style>
         /* Base styles */
         * {
@@ -322,7 +322,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Rugo - Go Game</h1>
+        <h1>Go</h1>
         <div class="canvas-container">
             <canvas id="game-canvas" width="600" height="600"></canvas>
         </div>
@@ -385,13 +385,17 @@
                 
                 statusText.textContent = `Go Game Ready! (${boardSize}×${boardSize})`;
                 
-                setupEventListeners();
+                // Set up event listeners (only once)
+                if (!eventListenersSetup) {
+                    setupEventListeners();
+                }
                 
                 // Try to load state from URL, otherwise draw fresh board
                 if (!loadStateFromUrl()) {
                     updateUrl(); // Set initial state in URL
                 }
                 drawBoard();
+                updateUndoRedoButtons();
                 
             } catch (error) {
                 console.error('Failed to initialize game:', error);
@@ -531,6 +535,12 @@
 
             // New game button
             document.getElementById('new-game-btn').addEventListener('click', () => {
+                // Clear URL state for fresh game
+                const url = new URL(window.location);
+                url.searchParams.delete('state');
+                window.history.replaceState(null, '', url);
+                
+                // Start fresh game
                 initGame();
             });
 
@@ -554,8 +564,28 @@
 
             // Pass button
             document.getElementById('pass-btn').addEventListener('click', () => {
-                // TODO: Implement pass functionality
-                console.log('Pass clicked');
+                if (game) {
+                    try {
+                        const result = game.handle_pass();
+                        if (result === "Pass successful") {
+                            drawBoard();
+                            updateUndoRedoButtons();
+                            updateUrl();
+                            clearErrorMessage();
+                            
+                            // Show temporary pass message
+                            const player = game.get_current_player() === 1 ? 'White' : 'Black'; // Previous player (who just passed)
+                            const previousPlayer = game.get_current_player() === 1 ? 'Black' : 'White';
+                            showErrorMessage(`${previousPlayer} passes. ${player}'s turn.`);
+                            setTimeout(clearErrorMessage, 2000);
+                        } else {
+                            showErrorMessage(result);
+                        }
+                    } catch (error) {
+                        console.error('Pass error:', error);
+                        showErrorMessage('Error processing pass: ' + error);
+                    }
+                }
             });
 
             // Handle window resize and orientation changes
