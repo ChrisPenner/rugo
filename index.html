@@ -115,6 +115,10 @@
         <div class="status">
             <div id="status-text" class="info">Loading...</div>
             <div id="current-player">Current Player: Black</div>
+            <div id="score-display">
+                <div>Black Captures: <span id="black-score">0</span></div>
+                <div>White Captures: <span id="white-score">0</span></div>
+            </div>
         </div>
     </div>
 
@@ -343,6 +347,10 @@
             // Update current player display
             const player = game.get_current_player();
             currentPlayerText.textContent = `Current Player: ${player === 1 ? 'Black' : 'White'}`;
+            
+            // Update capture scores
+            document.getElementById('black-score').textContent = game.get_black_captures();
+            document.getElementById('white-score').textContent = game.get_white_captures();
         }
 
         // Start the game
