@@ -2,71 +2,167 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Rugo - Go Game</title>
     <style>
+        /* Base styles */
+        * {
+            box-sizing: border-box;
+        }
+        
         body {
             margin: 0;
-            padding: 20px;
+            padding: 10px;
             background-color: #f5f5f5;
             font-family: Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            /* Prevent zoom on double tap in iOS */
+            touch-action: manipulation;
         }
         
         .container {
             display: flex;
             flex-direction: column;
             align-items: center;
+            max-width: 100vw;
+            overflow: hidden;
         }
         
         h1 {
             color: #333;
-            margin-bottom: 20px;
+            margin: 10px 0 20px 0;
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            text-align: center;
+        }
+        
+        /* Responsive canvas container */
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: min(90vw, 90vh, 600px);
+            aspect-ratio: 1;
+            margin: 0 auto;
         }
         
         #game-canvas {
             border: 2px solid #8B4513;
             background-color: #DEB887;
             cursor: pointer;
+            width: 100%;
+            height: 100%;
+            display: block;
+            /* Prevent canvas selection on mobile */
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
         
         .controls {
             margin-top: 20px;
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 0 10px;
+        }
+        
+        .board-size-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .board-size-controls label {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .board-size-controls select {
+            padding: 12px 15px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background-color: white;
+            min-width: 120px;
+            /* Improve touch targets on mobile */
+            min-height: 44px;
+        }
+        
+        /* Button controls container */
+        .button-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            width: 100%;
         }
         
         button {
-            padding: 10px 20px;
-            margin: 5px;
+            padding: 15px 20px;
+            margin: 0;
             font-size: 16px;
+            font-weight: 600;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             background-color: #4CAF50;
             color: white;
             cursor: pointer;
+            /* Improve touch targets */
+            min-height: 48px;
+            min-width: 120px;
+            /* Prevent button text selection */
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            /* Add touch feedback */
+            transition: all 0.2s ease;
         }
         
         button:hover {
             background-color: #45a049;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+            background-color: #3d8b40;
         }
         
         button:disabled {
             background-color: #cccccc;
             color: #666666;
             cursor: not-allowed;
+            transform: none;
         }
         
         button:disabled:hover {
             background-color: #cccccc;
+            transform: none;
         }
         
         .status {
-            margin-top: 10px;
-            padding: 10px;
+            margin-top: 20px;
+            padding: 15px;
             background-color: white;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
         }
         
         .error {
-            color: red;
+            color: #e53e3e;
             font-weight: bold;
         }
         
@@ -74,28 +170,162 @@
             color: #333;
         }
         
-        .board-size-controls {
-            margin-bottom: 10px;
-        }
-        
-        .board-size-controls label {
-            margin-right: 10px;
+        #current-player {
+            font-size: 18px;
             font-weight: bold;
+            margin: 10px 0;
+            color: #2d3748;
         }
         
-        .board-size-controls select {
-            padding: 5px 10px;
-            font-size: 14px;
-            border: 1px solid #ccc;
-            border-radius: 3px;
-            background-color: white;
+        #score-display {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        #score-display div {
+            background-color: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            min-width: 140px;
+            text-align: center;
+        }
+        
+        /* Mobile-specific styles */
+        @media (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+            
+            h1 {
+                margin: 5px 0 15px 0;
+                font-size: 1.8rem;
+            }
+            
+            .canvas-container {
+                max-width: min(95vw, 95vh, 500px);
+            }
+            
+            .controls {
+                margin-top: 15px;
+                gap: 12px;
+            }
+            
+            button {
+                padding: 12px 16px;
+                font-size: 15px;
+                min-height: 44px;
+            }
+            
+            .board-size-controls {
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            .board-size-controls select {
+                min-width: 150px;
+            }
+            
+            .button-controls {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            
+            .status {
+                padding: 12px;
+                margin-top: 15px;
+            }
+            
+            #current-player {
+                font-size: 16px;
+            }
+            
+            #score-display {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+        
+        /* Small mobile devices */
+        @media (max-width: 480px) {
+            body {
+                padding: 3px;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+                margin: 3px 0 10px 0;
+            }
+            
+            .canvas-container {
+                max-width: min(98vw, 98vh, 400px);
+            }
+            
+            .controls {
+                margin-top: 10px;
+                gap: 10px;
+                padding: 0 5px;
+            }
+            
+            button {
+                padding: 10px 12px;
+                font-size: 14px;
+                min-height: 40px;
+                min-width: 100px;
+            }
+            
+            .button-controls {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            
+            .status {
+                padding: 10px;
+            }
+        }
+        
+        /* Landscape orientation on mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .container {
+                flex-direction: row;
+                align-items: flex-start;
+                justify-content: center;
+                gap: 20px;
+                max-width: none;
+            }
+            
+            h1 {
+                position: absolute;
+                top: 5px;
+                left: 50%;
+                transform: translateX(-50%);
+                margin: 0;
+                font-size: 1.2rem;
+                z-index: 10;
+            }
+            
+            .canvas-container {
+                max-width: min(60vh, 400px);
+                margin-top: 40px;
+            }
+            
+            .controls {
+                max-width: 300px;
+                margin-top: 40px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Rugo - Go Game</h1>
-        <canvas id="game-canvas" width="600" height="600"></canvas>
+        <div class="canvas-container">
+            <canvas id="game-canvas" width="600" height="600"></canvas>
+        </div>
         
         <div class="controls">
             <div class="board-size-controls">
@@ -106,10 +336,12 @@
                     <option value="19" selected>19×19</option>
                 </select>
             </div>
-            <button id="new-game-btn">New Game</button>
-            <button id="undo-btn" disabled>Undo</button>
-            <button id="redo-btn" disabled>Redo</button>
-            <button id="pass-btn">Pass</button>
+            <div class="button-controls">
+                <button id="new-game-btn">New Game</button>
+                <button id="undo-btn" disabled>Undo</button>
+                <button id="redo-btn" disabled>Redo</button>
+                <button id="pass-btn">Pass</button>
+            </div>
         </div>
         
         <div class="status">
@@ -145,6 +377,9 @@
                 // Get selected board size
                 const boardSize = parseInt(document.getElementById('board-size').value);
                 
+                // Set up responsive canvas sizing
+                setupResponsiveCanvas();
+                
                 // Create game instance with selected size
                 game = GoGame.new_with_size(canvas, boardSize);
                 
@@ -164,18 +399,54 @@
                 statusText.className = "error";
             }
         }
+        
+        function setupResponsiveCanvas() {
+            const container = document.querySelector('.canvas-container');
+            const rect = container.getBoundingClientRect();
+            const size = Math.min(rect.width, rect.height);
+            
+            // Set canvas internal dimensions to a fixed size for consistent rendering
+            canvas.width = 600;
+            canvas.height = 600;
+            
+            // Scale the canvas using CSS to fit the container
+            canvas.style.width = size + 'px';
+            canvas.style.height = size + 'px';
+        }
 
         function setupEventListeners() {
             if (eventListenersSetup) return; // Prevent duplicate listeners
             eventListenersSetup = true;
             
-            // Canvas click handler
-            canvas.addEventListener('click', (event) => {
+            // Helper function to handle board interactions
+            function handleBoardInteraction(event) {
                 if (!game) return;
                 
+                // Prevent default touch behaviors
+                event.preventDefault();
+                
                 const rect = canvas.getBoundingClientRect();
-                const canvasX = event.clientX - rect.left;
-                const canvasY = event.clientY - rect.top;
+                let clientX, clientY;
+                
+                // Handle both touch and mouse events
+                if (event.type === 'touchstart' || event.type === 'touchend') {
+                    if (event.touches && event.touches.length > 0) {
+                        clientX = event.touches[0].clientX;
+                        clientY = event.touches[0].clientY;
+                    } else if (event.changedTouches && event.changedTouches.length > 0) {
+                        clientX = event.changedTouches[0].clientX;
+                        clientY = event.changedTouches[0].clientY;
+                    } else {
+                        return;
+                    }
+                } else {
+                    clientX = event.clientX;
+                    clientY = event.clientY;
+                }
+                
+                // Calculate coordinates relative to the displayed canvas size
+                const canvasX = (clientX - rect.left) * (canvas.width / rect.width);
+                const canvasY = (clientY - rect.top) * (canvas.height / rect.height);
                 
                 // Get current board size
                 const currentBoardSize = game.get_board_size();
@@ -206,10 +477,47 @@
                             showErrorMessage(result);
                         }
                     } catch (error) {
-                        console.error('Click handling error:', error);
+                        console.error('Board interaction error:', error);
                         showErrorMessage('Error processing move: ' + error);
                     }
                 }
+            }
+            
+            // Canvas click handler
+            canvas.addEventListener('click', handleBoardInteraction);
+            
+            // Touch event handlers for better mobile support
+            canvas.addEventListener('touchstart', (event) => {
+                // Store the touch for potential tap detection
+                canvas._touchStartTime = Date.now();
+                canvas._touchStartPos = {
+                    x: event.touches[0].clientX,
+                    y: event.touches[0].clientY
+                };
+            });
+            
+            canvas.addEventListener('touchend', (event) => {
+                // Only treat as tap if it was quick and didn't move much
+                if (canvas._touchStartTime && canvas._touchStartPos) {
+                    const touchDuration = Date.now() - canvas._touchStartTime;
+                    const touch = event.changedTouches[0];
+                    const deltaX = Math.abs(touch.clientX - canvas._touchStartPos.x);
+                    const deltaY = Math.abs(touch.clientY - canvas._touchStartPos.y);
+                    
+                    // Consider it a tap if it was quick and didn't move much
+                    if (touchDuration < 500 && deltaX < 10 && deltaY < 10) {
+                        handleBoardInteraction(event);
+                    }
+                }
+                
+                // Clean up
+                delete canvas._touchStartTime;
+                delete canvas._touchStartPos;
+            });
+            
+            // Prevent context menu on touch devices
+            canvas.addEventListener('contextmenu', (event) => {
+                event.preventDefault();
             });
 
             // Board size selector
@@ -250,17 +558,28 @@
                 console.log('Pass clicked');
             });
 
-            // Handle window resize
+            // Handle window resize and orientation changes
+            let resizeTimeout;
             window.addEventListener('resize', () => {
-                if (game) {
-                    const canvas = document.getElementById('game-canvas');
-                    try {
-                        game.resize(canvas.width, canvas.height);
-                        render();
-                    } catch (error) {
-                        console.error('Resize error:', error);
+                // Debounce resize events
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    if (game) {
+                        setupResponsiveCanvas();
+                        drawBoard();
                     }
-                }
+                }, 100);
+            });
+            
+            // Handle orientation change
+            window.addEventListener('orientationchange', () => {
+                // Wait a bit for the orientation to fully change
+                setTimeout(() => {
+                    if (game) {
+                        setupResponsiveCanvas();
+                        drawBoard();
+                    }
+                }, 250);
             });
         }
 
