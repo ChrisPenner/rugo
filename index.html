@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>WebGPU Go Game</title>
+    <title>Rugo - Go Game</title>
     <style>
         body {
             margin: 0;
@@ -67,7 +67,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>WebGPU Go Game</h1>
+        <h1>Rugo - Go Game</h1>
         <canvas id="game-canvas" width="600" height="600"></canvas>
         
         <div class="controls">
@@ -91,7 +91,7 @@
 
         async function initGame() {
             try {
-                statusText.textContent = "Initializing WebGPU...";
+                statusText.textContent = "Initializing Go Game...";
                 statusText.className = "info";
                 
                 // Initialize the wasm module
@@ -99,11 +99,13 @@
                 
                 statusText.textContent = "Creating game instance...";
                 
-                // Create game instance - this needs to be handled differently due to async nature
-                // For now, we'll create a simpler synchronous version
-                statusText.textContent = "WebGPU Go Game Ready!";
+                // Create game instance
+                game = new GoGame(canvas);
+                
+                statusText.textContent = "Go Game Ready!";
                 
                 setupEventListeners();
+                drawBoard();
                 
             } catch (error) {
                 console.error('Failed to initialize game:', error);
@@ -118,12 +120,16 @@
                 if (!game) return;
                 
                 const rect = canvas.getBoundingClientRect();
-                const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-                const y = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
+                const canvasX = event.clientX - rect.left;
+                const canvasY = event.clientY - rect.top;
+                
+                // Convert to normalized coordinates (-1 to 1)
+                const x = (canvasX / canvas.width) * 2 - 1;
+                const y = -((canvasY / canvas.height) * 2 - 1);
                 
                 try {
                     game.handle_click(x, y);
-                    render();
+                    drawBoard();
                 } catch (error) {
                     console.error('Click handling error:', error);
                 }
@@ -154,34 +160,95 @@
             });
         }
 
-        function render() {
-            if (game) {
-                try {
-                    game.render();
-                } catch (error) {
-                    console.error('Render error:', error);
-                    statusText.textContent = `Render error: ${error}`;
-                    statusText.className = "error";
+        function drawBoard() {
+            if (!game) return;
+            
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Clear canvas
+            ctx.fillStyle = '#DEB887';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw grid lines
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            
+            const cellSize = Math.min(width, height) / 20;
+            const boardSize = cellSize * 19;
+            const offsetX = (width - boardSize) / 2;
+            const offsetY = (height - boardSize) / 2;
+            
+            // Draw horizontal lines
+            for (let i = 0; i < 19; i++) {
+                const y = offsetY + i * cellSize;
+                ctx.beginPath();
+                ctx.moveTo(offsetX, y);
+                ctx.lineTo(offsetX + boardSize, y);
+                ctx.stroke();
+            }
+            
+            // Draw vertical lines
+            for (let i = 0; i < 19; i++) {
+                const x = offsetX + i * cellSize;
+                ctx.beginPath();
+                ctx.moveTo(x, offsetY);
+                ctx.lineTo(x, offsetY + boardSize);
+                ctx.stroke();
+            }
+            
+            // Draw star points
+            const starPoints = [
+                [3, 3], [9, 3], [15, 3],
+                [3, 9], [9, 9], [15, 9],
+                [3, 15], [9, 15], [15, 15]
+            ];
+            
+            ctx.fillStyle = '#000';
+            for (let [sx, sy] of starPoints) {
+                const x = offsetX + sx * cellSize;
+                const y = offsetY + sy * cellSize;
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+            
+            // Draw stones
+            for (let y = 0; y < 19; y++) {
+                for (let x = 0; x < 19; x++) {
+                    const state = game.get_board_state(x, y);
+                    if (state !== 0) {
+                        const centerX = offsetX + x * cellSize;
+                        const centerY = offsetY + y * cellSize;
+                        const radius = cellSize * 0.4;
+                        
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                        
+                        if (state === 1) { // Black
+                            ctx.fillStyle = '#000';
+                        } else { // White
+                            ctx.fillStyle = '#FFF';
+                            ctx.strokeStyle = '#000';
+                            ctx.lineWidth = 2;
+                        }
+                        
+                        ctx.fill();
+                        if (state === 2) {
+                            ctx.stroke();
+                        }
+                    }
                 }
             }
+            
+            // Update current player display
+            const player = game.get_current_player();
+            currentPlayerText.textContent = `Current Player: ${player === 1 ? 'Black' : 'White'}`;
         }
 
-        function gameLoop() {
-            render();
-            requestAnimationFrame(gameLoop);
-        }
-
-        // Check WebGPU support
-        if (!navigator.gpu) {
-            statusText.textContent = "WebGPU is not supported in this browser";
-            statusText.className = "error";
-        } else {
-            // Start the game
-            initGame().then(() => {
-                // Start the render loop
-                gameLoop();
-            });
-        }
+        // Start the game
+        initGame();
     </script>
 </body>
 </html>
