@@ -71,6 +71,26 @@
             user-select: none;
         }
 
+        /* Mobile magnifier for precise placement */
+        .magnifier {
+            position: fixed;
+            width: 120px;
+            height: 120px;
+            border: 3px solid #333;
+            border-radius: 60px;
+            background: white;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .magnifier canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 57px;
+        }
+
         /* Compact game status under the board */
         .game-status {
             margin-top: 8px;
@@ -532,6 +552,9 @@
         <div class="game-area">
             <div class="canvas-container">
                 <canvas id="game-canvas" width="600" height="600"></canvas>
+                <div class="magnifier" id="magnifier">
+                    <canvas id="magnifier-canvas" width="120" height="120"></canvas>
+                </div>
             </div>
             <!-- Compact game status directly under the board -->
             <div class="game-status">
@@ -1356,6 +1379,85 @@
                 drawBoard();
             });
 
+            // Magnifier functionality for mobile touch precision
+            const magnifier = document.getElementById('magnifier');
+            const magnifierCanvas = document.getElementById('magnifier-canvas');
+            const magnifierCtx = magnifierCanvas.getContext('2d');
+            let magnifierScale = 2.0; // Magnification level
+
+            function showMagnifier(touch) {
+                // Position the magnifier above the finger
+                const magnifierWidth = 120;
+                const magnifierHeight = 120;
+                const offsetY = magnifierHeight + 30; // Space above finger
+
+                // Get touch position relative to viewport (clientX/Y for absolute positioning)
+                let x = touch.clientX - magnifierWidth / 2;
+                let y = touch.clientY - offsetY;
+
+                // Keep magnifier within viewport
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+
+                if (x < 10) x = 10;
+                if (x + magnifierWidth > viewportWidth - 10) x = viewportWidth - magnifierWidth - 10;
+                if (y < 10) y = 10;
+
+                magnifier.style.left = x + 'px';
+                magnifier.style.top = y + 'px';
+                magnifier.style.display = 'block';
+
+                // Draw magnified content immediately
+                drawMagnifierContent(touch);
+            } function hideMagnifier() {
+                magnifier.style.display = 'none';
+            }
+
+            function drawMagnifierContent(touch) {
+                const rect = canvas.getBoundingClientRect();
+
+                // Get touch position relative to canvas
+                const canvasX = (touch.clientX - rect.left) * (canvas.width / rect.width);
+                const canvasY = (touch.clientY - rect.top) * (canvas.height / rect.height);
+
+                // Clear magnifier canvas
+                magnifierCtx.clearRect(0, 0, 120, 120);
+
+                // Calculate source area (what to magnify from the main canvas)
+                const sourceSize = 60; // Size of area to capture (in canvas pixels)
+                const sourceX = canvasX - sourceSize / 2;
+                const sourceY = canvasY - sourceSize / 2;
+
+                // Save context for clipping
+                magnifierCtx.save();
+
+                // Create circular clipping mask
+                magnifierCtx.beginPath();
+                magnifierCtx.arc(60, 60, 57, 0, 2 * Math.PI);
+                magnifierCtx.clip();
+
+                // Draw magnified portion of main canvas
+                magnifierCtx.drawImage(
+                    canvas,
+                    sourceX, sourceY, sourceSize, sourceSize,  // Source area (canvas coordinates)
+                    0, 0, 120, 120                              // Destination area (magnifier size)
+                );
+
+                // Draw crosshair for precise targeting
+                magnifierCtx.restore(); // Restore to draw crosshair outside clipping
+                magnifierCtx.strokeStyle = '#ff0000';
+                magnifierCtx.lineWidth = 2;
+                magnifierCtx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+                magnifierCtx.shadowBlur = 2;
+                magnifierCtx.beginPath();
+                magnifierCtx.moveTo(60, 45);
+                magnifierCtx.lineTo(60, 75);
+                magnifierCtx.moveTo(45, 60);
+                magnifierCtx.lineTo(75, 60);
+                magnifierCtx.stroke();
+                magnifierCtx.shadowBlur = 0; // Reset shadow
+            }
+
             // Touch event handlers for better mobile support with drag functionality
             canvas.addEventListener('touchstart', (event) => {
                 event.preventDefault(); // Prevent scrolling
@@ -1370,6 +1472,9 @@
                         x: event.touches[0].clientX,
                         y: event.touches[0].clientY
                     };
+
+                    // Show magnifier for precise placement
+                    showMagnifier(event.touches[0]);
                 }
             });
 
@@ -1379,6 +1484,12 @@
                 if (editMode && isDragging) {
                     // Handle dragging in edit mode
                     handleEditDrag(event);
+                } else if (!editMode && canvas._touchStartTime) {
+                    // Update magnifier position in normal mode while dragging
+                    // Use requestAnimationFrame for smooth updates
+                    requestAnimationFrame(() => {
+                        showMagnifier(event.touches[0]);
+                    });
                 }
             });
 
@@ -1412,6 +1523,7 @@
                     // Clean up
                     delete canvas._touchStartTime;
                     delete canvas._touchStartPos;
+                    hideMagnifier(); // Hide magnifier when touch ends
                 }
             });
 
