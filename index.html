@@ -97,12 +97,85 @@
             min-height: 44px;
         }
 
-        /* Button controls container */
-        .button-controls {
+        /* Primary button controls container - for most used actions */
+        .primary-controls {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .primary-controls button {
+            padding: 18px 24px;
+            font-size: 18px;
+            font-weight: 700;
+            min-height: 56px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Secondary controls container - for less frequently used actions */
+        .secondary-controls {
+            display: flex;
+            flex-direction: column;
             gap: 10px;
             width: 100%;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .secondary-controls h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .secondary-button-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 8px;
+        }
+
+        .secondary-controls button {
+            padding: 10px 12px;
+            font-size: 14px;
+            font-weight: 500;
+            min-height: 40px;
+            background-color: #6c757d;
+            opacity: 0.85;
+        }
+
+        .secondary-controls button:hover {
+            background-color: #5a6268;
+            opacity: 1;
+        }
+
+        .board-size-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .board-size-controls label {
+            font-weight: 500;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .board-size-controls select {
+            padding: 8px 12px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background-color: white;
+            min-width: 100px;
+            min-height: 36px;
         }
 
         button {
@@ -231,9 +304,24 @@
                 min-width: 150px;
             }
 
-            .button-controls {
-                grid-template-columns: repeat(2, 1fr);
+            .primary-controls {
+                gap: 12px;
+            }
+
+            .primary-controls button {
+                padding: 14px 18px;
+                font-size: 16px;
+                min-height: 48px;
+            }
+
+            .secondary-controls {
+                padding: 12px;
                 gap: 8px;
+            }
+
+            .secondary-button-row {
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
             }
 
             .status {
@@ -279,9 +367,23 @@
                 min-width: 100px;
             }
 
-            .button-controls {
+            .primary-controls {
+                gap: 10px;
+            }
+
+            .primary-controls button {
+                padding: 12px 14px;
+                font-size: 15px;
+                min-height: 44px;
+            }
+
+            .secondary-controls {
+                padding: 10px;
+            }
+
+            .secondary-button-row {
                 grid-template-columns: 1fr;
-                gap: 8px;
+                gap: 6px;
             }
 
             .status {
@@ -330,19 +432,28 @@
         </div>
 
         <div class="controls">
-            <div class="board-size-controls">
-                <label for="board-size">Board Size:</label>
-                <select id="board-size">
-                    <option value="9">9×9</option>
-                    <option value="13">13×13</option>
-                    <option value="19" selected>19×19</option>
-                </select>
-            </div>
-            <div class="button-controls">
-                <button id="new-game-btn">New Game</button>
+            <!-- Primary game controls - most frequently used -->
+            <div class="primary-controls">
                 <button id="undo-btn" disabled>Undo</button>
                 <button id="redo-btn" disabled>Redo</button>
                 <button id="pass-btn">Pass</button>
+            </div>
+
+            <!-- Secondary controls - less frequently used -->
+            <div class="secondary-controls">
+                <h3>Game Settings</h3>
+                <div class="board-size-controls">
+                    <label for="board-size">Board Size:</label>
+                    <select id="board-size">
+                        <option value="9">9×9</option>
+                        <option value="13">13×13</option>
+                        <option value="19" selected>19×19</option>
+                    </select>
+                </div>
+                <div class="secondary-button-row">
+                    <button id="new-game-btn">New Game</button>
+                    <button id="copy-url-btn">Copy URL</button>
+                </div>
             </div>
         </div>
 
@@ -601,6 +712,44 @@
                     } catch (error) {
                         console.error('Pass error:', error);
                         showErrorMessage('Error processing pass: ' + error);
+                    }
+                }
+            });
+
+            // Copy URL button
+            document.getElementById('copy-url-btn').addEventListener('click', async () => {
+                if (!game) {
+                    showErrorMessage('No game to copy URL for');
+                    return;
+                }
+
+                try {
+                    // Ensure URL is up to date with current game state
+                    updateUrl();
+
+                    // Copy current URL to clipboard
+                    await navigator.clipboard.writeText(window.location.href);
+
+                    // Show success message
+                    showErrorMessage('Game URL copied to clipboard!');
+                    setTimeout(clearErrorMessage, 2000);
+                } catch (error) {
+                    console.error('Failed to copy URL:', error);
+                    // Fallback for browsers that don't support clipboard API
+                    try {
+                        // Create a temporary input element
+                        const tempInput = document.createElement('input');
+                        tempInput.value = window.location.href;
+                        document.body.appendChild(tempInput);
+                        tempInput.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(tempInput);
+
+                        showErrorMessage('Game URL copied to clipboard!');
+                        setTimeout(clearErrorMessage, 2000);
+                    } catch (fallbackError) {
+                        console.error('Fallback copy failed:', fallbackError);
+                        showErrorMessage('Failed to copy URL to clipboard');
                     }
                 }
             });
