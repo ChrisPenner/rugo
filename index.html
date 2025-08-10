@@ -544,11 +544,13 @@
                 padding: 8px;
                 gap: 16px;
                 align-items: center;
-                justify-content: center; /* Center the entire content */
+                justify-content: center;
+                /* Center the entire content */
             }
 
             .game-area {
-                flex: 0 0 auto; /* Don't grow, just size to content */
+                flex: 0 0 auto;
+                /* Don't grow, just size to content */
                 display: flex;
                 flex-direction: column;
                 align-items: center;
@@ -556,7 +558,8 @@
             }
 
             .canvas-container {
-                width: min(85vh, 700px); /* Increased from 600px for larger board */
+                width: min(85vh, 700px);
+                /* Increased from 600px for larger board */
                 height: min(85vh, 700px);
                 max-width: min(85vh, calc(100vw - 250px));
                 max-height: min(85vh, calc(100vw - 250px));
@@ -637,18 +640,23 @@
         /* Extra large screens - optimize layout for desktop monitors */
         @media (min-width: 1200px) {
             .container {
-                max-width: 1100px; /* Increased to accommodate larger board */
-                margin: 0 auto; /* Center the entire game container */
-                justify-content: space-between; /* Space between board and controls */
+                max-width: 1100px;
+                /* Increased to accommodate larger board */
+                margin: 0 auto;
+                /* Center the entire game container */
+                justify-content: space-between;
+                /* Space between board and controls */
             }
 
             .canvas-container {
-                width: 750px; /* Increased from 600px for better gameplay experience */
+                width: 750px;
+                /* Increased from 600px for better gameplay experience */
                 height: 750px;
             }
 
             .controls {
-                min-width: 240px; /* Slightly wider controls for better readability */
+                min-width: 240px;
+                /* Slightly wider controls for better readability */
             }
         }
 
@@ -1693,8 +1701,13 @@
                         y: event.touches[0].clientY
                     };
 
-                    // Show magnifier for precise placement
-                    showMagnifier(event.touches[0]);
+                    // Set a timeout to show magnifier after 500ms
+                    canvas._magnifierTimeout = setTimeout(() => {
+                        // Only show if the touch is still active
+                        if (canvas._touchStartTime) {
+                            showMagnifier(event.touches[0]);
+                        }
+                    }, 500);
                 }
             });
 
@@ -1705,11 +1718,14 @@
                     // Handle dragging in edit mode
                     handleEditDrag(event);
                 } else if (!editMode && canvas._touchStartTime) {
-                    // Update magnifier position in normal mode while dragging
-                    // Use requestAnimationFrame for smooth updates
-                    requestAnimationFrame(() => {
-                        showMagnifier(event.touches[0]);
-                    });
+                    // Only update magnifier position if it's already visible
+                    const magnifier = document.getElementById('magnifier');
+                    if (magnifier.style.display === 'block') {
+                        // Use requestAnimationFrame for smooth updates
+                        requestAnimationFrame(() => {
+                            showMagnifier(event.touches[0]);
+                        });
+                    }
                 }
             });
 
@@ -1725,6 +1741,12 @@
 
                         // For touch, we don't maintain hover position since there's no persistent cursor
                         // Touch interactions are discrete events
+                    }
+
+                    // Clear magnifier timeout if it exists (in case edit mode was toggled during touch)
+                    if (canvas._magnifierTimeout) {
+                        clearTimeout(canvas._magnifierTimeout);
+                        delete canvas._magnifierTimeout;
                     }
                 } else {
                     // Handle stone placement in normal mode
@@ -1754,6 +1776,13 @@
                     // Clean up
                     delete canvas._touchStartTime;
                     delete canvas._touchStartPos;
+
+                    // Clear magnifier timeout if it hasn't fired yet
+                    if (canvas._magnifierTimeout) {
+                        clearTimeout(canvas._magnifierTimeout);
+                        delete canvas._magnifierTimeout;
+                    }
+
                     hideMagnifier(); // Hide magnifier when touch ends
                 }
             });
