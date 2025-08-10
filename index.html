@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -9,7 +10,7 @@
         * {
             box-sizing: border-box;
         }
-        
+
         body {
             margin: 0;
             padding: 10px;
@@ -21,7 +22,7 @@
             /* Prevent zoom on double tap in iOS */
             touch-action: manipulation;
         }
-        
+
         .container {
             display: flex;
             flex-direction: column;
@@ -29,14 +30,14 @@
             max-width: 100vw;
             overflow: hidden;
         }
-        
+
         h1 {
             color: #333;
             margin: 10px 0 20px 0;
             font-size: clamp(1.5rem, 4vw, 2.5rem);
             text-align: center;
         }
-        
+
         /* Responsive canvas container */
         .canvas-container {
             position: relative;
@@ -45,7 +46,7 @@
             aspect-ratio: 1;
             margin: 0 auto;
         }
-        
+
         #game-canvas {
             border: 2px solid #8B4513;
             background-color: #DEB887;
@@ -61,7 +62,7 @@
             -ms-user-select: none;
             user-select: none;
         }
-        
+
         .controls {
             margin-top: 20px;
             width: 100%;
@@ -71,7 +72,7 @@
             gap: 15px;
             padding: 0 10px;
         }
-        
+
         .board-size-controls {
             display: flex;
             align-items: center;
@@ -79,12 +80,12 @@
             gap: 10px;
             flex-wrap: wrap;
         }
-        
+
         .board-size-controls label {
             font-weight: bold;
             font-size: 16px;
         }
-        
+
         .board-size-controls select {
             padding: 12px 15px;
             font-size: 16px;
@@ -95,7 +96,7 @@
             /* Improve touch targets on mobile */
             min-height: 44px;
         }
-        
+
         /* Button controls container */
         .button-controls {
             display: grid;
@@ -103,7 +104,7 @@
             gap: 10px;
             width: 100%;
         }
-        
+
         button {
             padding: 15px 20px;
             margin: 0;
@@ -127,56 +128,56 @@
             /* Add touch feedback */
             transition: all 0.2s ease;
         }
-        
+
         button:hover {
             background-color: #45a049;
             transform: translateY(-2px);
         }
-        
+
         button:active {
             transform: translateY(0);
             background-color: #3d8b40;
         }
-        
+
         button:disabled {
             background-color: #cccccc;
             color: #666666;
             cursor: not-allowed;
             transform: none;
         }
-        
+
         button:disabled:hover {
             background-color: #cccccc;
             transform: none;
         }
-        
+
         .status {
             margin-top: 20px;
             padding: 15px;
             background-color: white;
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             width: 100%;
             max-width: 500px;
             text-align: center;
         }
-        
+
         .error {
             color: #e53e3e;
             font-weight: bold;
         }
-        
+
         .info {
             color: #333;
         }
-        
+
         #current-player {
             font-size: 18px;
             font-weight: bold;
             margin: 10px 0;
             color: #2d3748;
         }
-        
+
         #score-display {
             display: flex;
             justify-content: space-around;
@@ -184,7 +185,7 @@
             flex-wrap: wrap;
             gap: 10px;
         }
-        
+
         #score-display div {
             background-color: #f8f9fa;
             padding: 8px 12px;
@@ -193,101 +194,101 @@
             min-width: 140px;
             text-align: center;
         }
-        
+
         /* Mobile-specific styles */
         @media (max-width: 768px) {
             body {
                 padding: 5px;
             }
-            
+
             h1 {
                 margin: 5px 0 15px 0;
                 font-size: 1.8rem;
             }
-            
+
             .canvas-container {
                 max-width: min(95vw, 95vh, 500px);
             }
-            
+
             .controls {
                 margin-top: 15px;
                 gap: 12px;
             }
-            
+
             button {
                 padding: 12px 16px;
                 font-size: 15px;
                 min-height: 44px;
             }
-            
+
             .board-size-controls {
                 flex-direction: column;
                 align-items: center;
                 gap: 8px;
             }
-            
+
             .board-size-controls select {
                 min-width: 150px;
             }
-            
+
             .button-controls {
                 grid-template-columns: repeat(2, 1fr);
                 gap: 8px;
             }
-            
+
             .status {
                 padding: 12px;
                 margin-top: 15px;
             }
-            
+
             #current-player {
                 font-size: 16px;
             }
-            
+
             #score-display {
                 flex-direction: column;
                 gap: 8px;
             }
         }
-        
+
         /* Small mobile devices */
         @media (max-width: 480px) {
             body {
                 padding: 3px;
             }
-            
+
             h1 {
                 font-size: 1.5rem;
                 margin: 3px 0 10px 0;
             }
-            
+
             .canvas-container {
                 max-width: min(98vw, 98vh, 400px);
             }
-            
+
             .controls {
                 margin-top: 10px;
                 gap: 10px;
                 padding: 0 5px;
             }
-            
+
             button {
                 padding: 10px 12px;
                 font-size: 14px;
                 min-height: 40px;
                 min-width: 100px;
             }
-            
+
             .button-controls {
                 grid-template-columns: 1fr;
                 gap: 8px;
             }
-            
+
             .status {
                 padding: 10px;
             }
         }
-        
+
         /* Landscape orientation on mobile */
         @media (max-height: 500px) and (orientation: landscape) {
             .container {
@@ -297,7 +298,7 @@
                 gap: 20px;
                 max-width: none;
             }
-            
+
             h1 {
                 position: absolute;
                 top: 5px;
@@ -307,12 +308,12 @@
                 font-size: 1.2rem;
                 z-index: 10;
             }
-            
+
             .canvas-container {
                 max-width: min(60vh, 400px);
                 margin-top: 40px;
             }
-            
+
             .controls {
                 max-width: 300px;
                 margin-top: 40px;
@@ -320,13 +321,14 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>Go</h1>
         <div class="canvas-container">
             <canvas id="game-canvas" width="600" height="600"></canvas>
         </div>
-        
+
         <div class="controls">
             <div class="board-size-controls">
                 <label for="board-size">Board Size:</label>
@@ -343,7 +345,7 @@
                 <button id="pass-btn">Pass</button>
             </div>
         </div>
-        
+
         <div class="status">
             <div id="status-text" class="info">Loading...</div>
             <div id="current-player">Current Player: Black</div>
@@ -368,51 +370,51 @@
             try {
                 statusText.textContent = "Initializing Go Game...";
                 statusText.className = "info";
-                
+
                 // Initialize the wasm module
                 await init();
-                
+
                 statusText.textContent = "Creating game instance...";
-                
+
                 // Get selected board size
                 const boardSize = parseInt(document.getElementById('board-size').value);
-                
+
                 // Set up responsive canvas sizing
                 setupResponsiveCanvas();
-                
+
                 // Create game instance with selected size
                 game = GoGame.new_with_size(canvas, boardSize);
-                
+
                 statusText.textContent = `Go Game Ready! (${boardSize}×${boardSize})`;
-                
+
                 // Set up event listeners (only once)
                 if (!eventListenersSetup) {
                     setupEventListeners();
                 }
-                
+
                 // Try to load state from URL, otherwise draw fresh board
                 if (!loadStateFromUrl()) {
                     updateUrl(); // Set initial state in URL
                 }
                 drawBoard();
                 updateUndoRedoButtons();
-                
+
             } catch (error) {
                 console.error('Failed to initialize game:', error);
                 statusText.textContent = `Error: ${error}`;
                 statusText.className = "error";
             }
         }
-        
+
         function setupResponsiveCanvas() {
             const container = document.querySelector('.canvas-container');
             const rect = container.getBoundingClientRect();
             const size = Math.min(rect.width, rect.height);
-            
+
             // Set canvas internal dimensions to a fixed size for consistent rendering
             canvas.width = 600;
             canvas.height = 600;
-            
+
             // Scale the canvas using CSS to fit the container
             canvas.style.width = size + 'px';
             canvas.style.height = size + 'px';
@@ -421,17 +423,17 @@
         function setupEventListeners() {
             if (eventListenersSetup) return; // Prevent duplicate listeners
             eventListenersSetup = true;
-            
+
             // Helper function to handle board interactions
             function handleBoardInteraction(event) {
                 if (!game) return;
-                
+
                 // Prevent default touch behaviors
                 event.preventDefault();
-                
+
                 const rect = canvas.getBoundingClientRect();
                 let clientX, clientY;
-                
+
                 // Handle both touch and mouse events
                 if (event.type === 'touchstart' || event.type === 'touchend') {
                     if (event.touches && event.touches.length > 0) {
@@ -447,14 +449,14 @@
                     clientX = event.clientX;
                     clientY = event.clientY;
                 }
-                
+
                 // Calculate coordinates relative to the displayed canvas size
                 const canvasX = (clientX - rect.left) * (canvas.width / rect.width);
                 const canvasY = (clientY - rect.top) * (canvas.height / rect.height);
-                
+
                 // Get current board size
                 const currentBoardSize = game.get_board_size();
-                
+
                 // Calculate board layout (same as in drawBoard)
                 const width = canvas.width;
                 const height = canvas.height;
@@ -462,11 +464,11 @@
                 const boardPixelSize = cellSize * (currentBoardSize - 1);
                 const offsetX = (width - boardPixelSize) / 2;
                 const offsetY = (height - boardPixelSize) / 2;
-                
+
                 // Convert canvas coordinates to board coordinates
                 const boardX = Math.round((canvasX - offsetX) / cellSize);
                 const boardY = Math.round((canvasY - offsetY) / cellSize);
-                
+
                 // Check if click is within board bounds
                 if (boardX >= 0 && boardX < currentBoardSize && boardY >= 0 && boardY < currentBoardSize) {
                     try {
@@ -486,10 +488,10 @@
                     }
                 }
             }
-            
+
             // Canvas click handler
             canvas.addEventListener('click', handleBoardInteraction);
-            
+
             // Touch event handlers for better mobile support
             canvas.addEventListener('touchstart', (event) => {
                 // Store the touch for potential tap detection
@@ -499,7 +501,7 @@
                     y: event.touches[0].clientY
                 };
             });
-            
+
             canvas.addEventListener('touchend', (event) => {
                 // Only treat as tap if it was quick and didn't move much
                 if (canvas._touchStartTime && canvas._touchStartPos) {
@@ -507,25 +509,34 @@
                     const touch = event.changedTouches[0];
                     const deltaX = Math.abs(touch.clientX - canvas._touchStartPos.x);
                     const deltaY = Math.abs(touch.clientY - canvas._touchStartPos.y);
-                    
+
                     // Consider it a tap if it was quick and didn't move much
                     if (touchDuration < 500 && deltaX < 10 && deltaY < 10) {
                         handleBoardInteraction(event);
                     }
                 }
-                
+
                 // Clean up
                 delete canvas._touchStartTime;
                 delete canvas._touchStartPos;
             });
-            
+
             // Prevent context menu on touch devices
             canvas.addEventListener('contextmenu', (event) => {
                 event.preventDefault();
             });
 
             // Board size selector
-            document.getElementById('board-size').addEventListener('change', () => {
+            document.getElementById('board-size').addEventListener('change', (event) => {
+                // Ask for confirmation before changing board size (which resets the game)
+                const confirmed = confirm('Changing the board size will start a new game and lose your current progress. Continue?');
+                if (!confirmed) {
+                    // Revert the selection to the current board size
+                    const currentBoardSize = game ? game.get_board_size() : 19;
+                    event.target.value = currentBoardSize.toString();
+                    return;
+                }
+
                 // Clear URL state when user changes board size manually
                 const url = new URL(window.location);
                 url.searchParams.delete('state');
@@ -535,11 +546,17 @@
 
             // New game button
             document.getElementById('new-game-btn').addEventListener('click', () => {
+                // Ask for confirmation before starting a new game
+                const confirmed = confirm('Start a new game? This will lose your current progress.');
+                if (!confirmed) {
+                    return;
+                }
+
                 // Clear URL state for fresh game
                 const url = new URL(window.location);
                 url.searchParams.delete('state');
                 window.history.replaceState(null, '', url);
-                
+
                 // Start fresh game
                 initGame();
             });
@@ -572,7 +589,7 @@
                             updateUndoRedoButtons();
                             updateUrl();
                             clearErrorMessage();
-                            
+
                             // Show temporary pass message
                             const player = game.get_current_player() === 1 ? 'White' : 'Black'; // Previous player (who just passed)
                             const previousPlayer = game.get_current_player() === 1 ? 'Black' : 'White';
@@ -600,7 +617,7 @@
                     }
                 }, 100);
             });
-            
+
             // Handle orientation change
             window.addEventListener('orientationchange', () => {
                 // Wait a bit for the orientation to fully change
@@ -619,15 +636,15 @@
                 document.getElementById('redo-btn').disabled = true;
                 return;
             }
-            
+
             document.getElementById('undo-btn').disabled = !game.can_undo();
             document.getElementById('redo-btn').disabled = !game.can_redo();
         }
-        
+
         // Update URL with current game state
         function updateUrl() {
             if (!game || suppressUrlUpdate) return;
-            
+
             try {
                 const state = game.serialize_state();
                 const url = new URL(window.location);
@@ -637,12 +654,12 @@
                 console.warn('Failed to update URL:', error);
             }
         }
-        
+
         // Load game state from URL
         function loadStateFromUrl() {
             const url = new URL(window.location);
             const stateParam = url.searchParams.get('state');
-            
+
             if (stateParam && game) {
                 suppressUrlUpdate = true;
                 try {
@@ -663,7 +680,7 @@
             }
             return false;
         }
-        
+
         // Handle browser back/forward navigation
         window.addEventListener('popstate', () => {
             if (game && loadStateFromUrl()) {
@@ -671,30 +688,30 @@
                 updateUndoRedoButtons();
             }
         });
-        
+
         function drawBoard() {
             if (!game) return;
-            
+
             const ctx = canvas.getContext('2d');
             const width = canvas.width;
             const height = canvas.height;
-            
+
             // Get current board size
             const currentBoardSize = game.get_board_size();
-            
+
             // Clear canvas
             ctx.fillStyle = '#DEB887';
             ctx.fillRect(0, 0, width, height);
-            
+
             // Draw grid lines
             ctx.strokeStyle = '#000';
             ctx.lineWidth = 1;
-            
+
             const cellSize = Math.min(width, height) / (currentBoardSize + 1);
             const boardPixelSize = cellSize * (currentBoardSize - 1);
             const offsetX = (width - boardPixelSize) / 2;
             const offsetY = (height - boardPixelSize) / 2;
-            
+
             // Draw horizontal lines (need boardSize lines for boardSize intersections)
             for (let i = 0; i < currentBoardSize; i++) {
                 const y = offsetY + i * cellSize;
@@ -703,7 +720,7 @@
                 ctx.lineTo(offsetX + boardPixelSize, y);
                 ctx.stroke();
             }
-            
+
             // Draw vertical lines (need boardSize lines for boardSize intersections)
             for (let i = 0; i < currentBoardSize; i++) {
                 const x = offsetX + i * cellSize;
@@ -712,7 +729,7 @@
                 ctx.lineTo(x, offsetY + boardPixelSize);
                 ctx.stroke();
             }
-            
+
             // Draw star points based on board size
             let starPoints = [];
             if (currentBoardSize === 19) {
@@ -728,11 +745,11 @@
                 ];
             } else if (currentBoardSize === 9) {
                 starPoints = [
-                    [2, 2], [2, 6], [6, 2], [6, 6], // corners  
+                    [2, 2], [2, 6], [6, 2], [6, 6], // corners
                     [4, 4] // center
                 ];
             }
-            
+
             ctx.fillStyle = '#000';
             for (let [sx, sy] of starPoints) {
                 const x = offsetX + sx * cellSize;
@@ -741,7 +758,7 @@
                 ctx.arc(x, y, 3, 0, 2 * Math.PI);
                 ctx.fill();
             }
-            
+
             // Draw stones
             for (let y = 0; y < currentBoardSize; y++) {
                 for (let x = 0; x < currentBoardSize; x++) {
@@ -750,10 +767,10 @@
                         const centerX = offsetX + x * cellSize;
                         const centerY = offsetY + y * cellSize;
                         const radius = cellSize * 0.4;
-                        
+
                         ctx.beginPath();
                         ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-                        
+
                         if (state === 1) { // Black
                             ctx.fillStyle = '#000';
                         } else { // White
@@ -761,7 +778,7 @@
                             ctx.strokeStyle = '#000';
                             ctx.lineWidth = 2;
                         }
-                        
+
                         ctx.fill();
                         if (state === 2) {
                             ctx.stroke();
@@ -769,11 +786,11 @@
                     }
                 }
             }
-            
+
             // Update current player display
             const player = game.get_current_player();
             currentPlayerText.textContent = `Current Player: ${player === 1 ? 'Black' : 'White'}`;
-            
+
             // Update capture scores
             document.getElementById('black-score').textContent = game.get_black_captures();
             document.getElementById('white-score').textContent = game.get_white_captures();
@@ -783,13 +800,13 @@
         function showErrorMessage(message) {
             statusText.textContent = message;
             statusText.className = "error";
-            
+
             // Clear error after 3 seconds
             setTimeout(() => {
                 clearErrorMessage();
             }, 3000);
         }
-        
+
         function clearErrorMessage() {
             const boardSize = game ? game.get_board_size() : 19;
             statusText.textContent = `Go Game Ready! (${boardSize}×${boardSize})`;
@@ -800,4 +817,5 @@
         initGame();
     </script>
 </body>
+
 </html>
