@@ -1948,8 +1948,9 @@
                 for (let x = 0; x < currentBoardSize; x++) {
                     const state = game.get_board_state(x, y);
                     if (state !== 0) {
-                        const centerX = offsetX + x * cellSize;
-                        const centerY = offsetY + y * cellSize;
+                        // Use the same positioning logic as grid lines for perfect alignment
+                        const centerX = Math.round(offsetX + x * cellSize) + 0.5;
+                        const centerY = Math.round(offsetY + y * cellSize) + 0.5;
                         const radius = cellSize * 0.4;
 
                         ctx.beginPath();
@@ -1971,8 +1972,9 @@
 
             // Draw hover preview stone
             if (hoverPosition && isValidBoardPosition(hoverPosition.x, hoverPosition.y)) {
-                const centerX = offsetX + hoverPosition.x * cellSize;
-                const centerY = offsetY + hoverPosition.y * cellSize;
+                // Use the same positioning logic as grid lines for perfect alignment
+                const centerX = Math.round(offsetX + hoverPosition.x * cellSize) + 0.5;
+                const centerY = Math.round(offsetY + hoverPosition.y * cellSize) + 0.5;
                 const radius = cellSize * 0.4;
 
                 ctx.beginPath();
@@ -2048,8 +2050,9 @@
             if (lastMove && lastMove.length === 2) {
                 const lastX = lastMove[0];
                 const lastY = lastMove[1];
-                const centerX = offsetX + lastX * cellSize;
-                const centerY = offsetY + lastY * cellSize;
+                // Use the same positioning logic as grid lines for perfect alignment
+                const centerX = Math.round(offsetX + lastX * cellSize) + 0.5;
+                const centerY = Math.round(offsetY + lastY * cellSize) + 0.5;
                 const highlightRadius = cellSize * 0.3;
 
                 // Draw a colored ring around the last move
