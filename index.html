@@ -180,7 +180,7 @@
 
         .tertiary-button-row {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: auto auto auto;
             gap: 6px;
             align-items: center;
         }
@@ -429,7 +429,6 @@
                 flex-shrink: 0;
                 width: auto;
                 min-width: 220px;
-                max-width: 400px;
                 max-height: 85vh;
                 gap: 12px;
                 display: flex;
@@ -566,8 +565,6 @@
                 <div class="tertiary-button-row">
                     <button id="sound-toggle-btn">🔊 Sound: ON</button>
                     <button id="wake-lock-btn">💡 Prevent sleep: OFF</button>
-                </div>
-                <div class="tertiary-button-row">
                     <button id="edit-mode-btn">✏️ Edit Mode: OFF</button>
                 </div>
             </div>
