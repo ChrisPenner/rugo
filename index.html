@@ -1665,6 +1665,13 @@
                         const currentPlayer = game.get_current_player();
                         const stoneRadius = Math.max(4, cellSize * 0.45);
 
+                        // Draw stone shadow for preview stone
+                        magnifierCtx.globalAlpha = 0.15;
+                        magnifierCtx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+                        magnifierCtx.beginPath();
+                        magnifierCtx.arc(stoneMagnifierX + stoneRadius * 0.15, stoneMagnifierY + stoneRadius * 0.15, stoneRadius, 0, 2 * Math.PI);
+                        magnifierCtx.fill();
+
                         // Draw stone with transparency to indicate it's a preview
                         magnifierCtx.globalAlpha = 0.7;
                         magnifierCtx.beginPath();
@@ -2407,6 +2414,15 @@
 
         // Helper function to draw a small stone for status display
         function drawSmallStone(ctx, x, y, radius, color) {
+            // Draw stone shadow for small stones
+            ctx.globalAlpha = 0.15;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.beginPath();
+            ctx.arc(x + radius * 0.15, y + radius * 0.15, radius, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Reset alpha for main stone
+            ctx.globalAlpha = 1.0;
             ctx.beginPath();
             ctx.arc(x, y, radius, 0, 2 * Math.PI);
 
@@ -2511,6 +2527,12 @@
             // Get current board size
             const currentBoardSize = game.get_board_size();
 
+            // Calculate board dimensions first
+            const cellSize = Math.min(displayWidth, displayHeight) / (currentBoardSize + 1);
+            const boardPixelSize = cellSize * (currentBoardSize - 1);
+            const offsetX = (displayWidth - boardPixelSize) / 2;
+            const offsetY = (displayHeight - boardPixelSize) / 2;
+
             // Clear canvas
             ctx.fillStyle = '#DEB887';
             ctx.fillRect(0, 0, displayWidth, displayHeight);
@@ -2518,11 +2540,6 @@
             // Draw grid lines with crisp lines
             ctx.strokeStyle = '#000';
             ctx.lineWidth = 1;
-
-            const cellSize = Math.min(displayWidth, displayHeight) / (currentBoardSize + 1);
-            const boardPixelSize = cellSize * (currentBoardSize - 1);
-            const offsetX = (displayWidth - boardPixelSize) / 2;
-            const offsetY = (displayHeight - boardPixelSize) / 2;
 
             // Draw horizontal lines (need boardSize lines for boardSize intersections)
             for (let i = 0; i < currentBoardSize; i++) {
@@ -2583,6 +2600,14 @@
                         const centerY = Math.round(offsetY + y * cellSize) + 0.5;
                         const radius = cellSize * 0.4;
 
+                        // Draw subtle shadow first (offset down and right)
+                        const shadowOffset = radius * 0.15;
+                        ctx.beginPath();
+                        ctx.arc(centerX + shadowOffset, centerY + shadowOffset, radius, 0, 2 * Math.PI);
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)'; // Very subtle shadow
+                        ctx.fill();
+
+                        // Draw the stone
                         ctx.beginPath();
                         ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
 
