@@ -1416,17 +1416,23 @@
             function drawMagnifierContent(touch) {
                 const rect = canvas.getBoundingClientRect();
 
-                // Get touch position relative to canvas
-                const canvasX = (touch.clientX - rect.left) * (canvas.width / rect.width);
-                const canvasY = (touch.clientY - rect.top) * (canvas.height / rect.height);
+                // Get touch position relative to canvas display size
+                const canvasDisplayX = touch.clientX - rect.left;
+                const canvasDisplayY = touch.clientY - rect.top;
+
+                // Account for device pixel ratio - canvas internal size vs display size
+                const devicePixelRatio = window.devicePixelRatio || 1;
+                const canvasX = canvasDisplayX * devicePixelRatio;
+                const canvasY = canvasDisplayY * devicePixelRatio;
 
                 // Clear magnifier canvas
                 magnifierCtx.clearRect(0, 0, 120, 120);
 
-                // Calculate source area (what to magnify from the main canvas)
-                const sourceSize = 60; // Size of area to capture (in canvas pixels)
-                const sourceX = canvasX - sourceSize / 2;
-                const sourceY = canvasY - sourceSize / 2;
+                // Calculate source area - use display-sized area to get actual size in magnifier
+                const displaySourceSize = 120; // 120px in display coordinates
+                const canvasSourceSize = displaySourceSize * devicePixelRatio; // Scale up for canvas coordinates
+                const sourceX = canvasX - canvasSourceSize / 2;
+                const sourceY = canvasY - canvasSourceSize / 2;
 
                 // Save context for clipping
                 magnifierCtx.save();
@@ -1436,12 +1442,57 @@
                 magnifierCtx.arc(60, 60, 57, 0, 2 * Math.PI);
                 magnifierCtx.clip();
 
-                // Draw magnified portion of main canvas
+                // Draw actual-size portion of main canvas
                 magnifierCtx.drawImage(
                     canvas,
-                    sourceX, sourceY, sourceSize, sourceSize,  // Source area (canvas coordinates)
-                    0, 0, 120, 120                              // Destination area (magnifier size)
+                    sourceX, sourceY, canvasSourceSize, canvasSourceSize,  // Source area (canvas coordinates)
+                    0, 0, 120, 120                                          // Destination area (display size = actual size)
                 );
+
+                // Draw hover preview stone if we're over a valid position
+                const boardPos = getBoardPositionFromEvent(touch);
+                if (boardPos && isValidBoardPosition(boardPos.x, boardPos.y)) {
+                    // Calculate board layout parameters (same as in drawBoard)
+                    const displayWidth = canvas.width / devicePixelRatio;
+                    const displayHeight = canvas.height / devicePixelRatio;
+                    const currentBoardSize = game.get_board_size();
+                    const cellSize = Math.min(displayWidth, displayHeight) / (currentBoardSize + 1);
+                    const boardPixelSize = cellSize * (currentBoardSize - 1);
+                    const offsetX = (displayWidth - boardPixelSize) / 2;
+                    const offsetY = (displayHeight - boardPixelSize) / 2;
+
+                    // Calculate stone position in display coordinates
+                    const stoneDisplayX = offsetX + boardPos.x * cellSize;
+                    const stoneDisplayY = offsetY + boardPos.y * cellSize;
+
+                    // Convert to magnifier coordinates
+                    const stoneMagnifierX = stoneDisplayX - canvasDisplayX + 60; // Center at crosshair
+                    const stoneMagnifierY = stoneDisplayY - canvasDisplayY + 60;
+
+                    // Only draw if the stone position is within the magnifier view
+                    if (stoneMagnifierX >= 0 && stoneMagnifierX <= 120 && stoneMagnifierY >= 0 && stoneMagnifierY <= 120) {
+                        const currentPlayer = game.get_current_player();
+                        const stoneRadius = Math.max(4, cellSize * 0.45);
+
+                        // Draw stone with transparency to indicate it's a preview
+                        magnifierCtx.globalAlpha = 0.7;
+                        magnifierCtx.beginPath();
+                        magnifierCtx.arc(stoneMagnifierX, stoneMagnifierY, stoneRadius, 0, 2 * Math.PI);
+
+                        if (currentPlayer === 1) { // Black
+                            magnifierCtx.fillStyle = '#000';
+                            magnifierCtx.fill();
+                            magnifierCtx.strokeStyle = '#333';
+                        } else { // White
+                            magnifierCtx.fillStyle = '#fff';
+                            magnifierCtx.fill();
+                            magnifierCtx.strokeStyle = '#ccc';
+                        }
+                        magnifierCtx.lineWidth = 1;
+                        magnifierCtx.stroke();
+                        magnifierCtx.globalAlpha = 1.0; // Reset alpha
+                    }
+                }
 
                 // Draw crosshair for precise targeting
                 magnifierCtx.restore(); // Restore to draw crosshair outside clipping
@@ -1466,7 +1517,7 @@
                     // In edit mode, start dragging immediately
                     handleBoardInteraction(event);
                 } else {
-                    // Store the touch for potential tap detection in normal mode
+                    // Store the touch for potential stone placement in normal mode
                     canvas._touchStartTime = Date.now();
                     canvas._touchStartPos = {
                         x: event.touches[0].clientX,
@@ -1507,16 +1558,27 @@
                         // Touch interactions are discrete events
                     }
                 } else {
-                    // Handle tap in normal mode
+                    // Handle stone placement in normal mode
                     if (canvas._touchStartTime && canvas._touchStartPos) {
-                        const touchDuration = Date.now() - canvas._touchStartTime;
                         const touch = event.changedTouches[0];
-                        const deltaX = Math.abs(touch.clientX - canvas._touchStartPos.x);
-                        const deltaY = Math.abs(touch.clientY - canvas._touchStartPos.y);
 
-                        // Consider it a tap if it was quick and didn't move much
-                        if (touchDuration < 500 && deltaX < 10 && deltaY < 10) {
-                            handleBoardInteraction(event);
+                        // Always try to place a stone at the final touch position
+                        // This creates the "drag to place" behavior
+                        const finalBoardPos = getBoardPositionFromEvent(event);
+                        if (finalBoardPos && isValidBoardPosition(finalBoardPos.x, finalBoardPos.y)) {
+                            try {
+                                const result = game.handle_board_click(finalBoardPos.x, finalBoardPos.y);
+                                if (result === "Move successful") {
+                                    // Play sound effect for successful stone placement
+                                    soundSystem.playTapSound();
+
+                                    drawBoard();
+                                    updateUndoRedoButtons();
+                                    updateUrl();
+                                }
+                            } catch (error) {
+                                console.error('Stone placement error:', error);
+                            }
                         }
                     }
 
