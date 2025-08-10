@@ -1814,7 +1814,7 @@
         }
 
         // Helper function to draw game status above the board
-        function drawGameStatus(ctx, canvasWidth, boardTopY, cellSize) {
+        function drawGameStatus(ctx, canvasWidth, boardTopY, cellSize, boardLeftX, boardWidth) {
             if (!game) return;
 
             const currentPlayer = game.get_current_player();
@@ -1825,60 +1825,45 @@
             const statusY = boardTopY - 25; // Position above the board
             const fontSize = Math.max(12, cellSize * 0.3);
             const stoneRadius = Math.max(6, cellSize * 0.15);
-
+            
             ctx.font = `${fontSize}px Arial`;
-            ctx.textAlign = 'center';
             ctx.fillStyle = '#000';
 
-            // Calculate total width needed for the status line
-            const nextText = 'Next:';
-            const whiteText = `: ${whiteCaptures}`;
-            const blackText = `: ${blackCaptures}`;
-
-            const nextTextWidth = ctx.measureText(nextText).width;
-            const whiteTextWidth = ctx.measureText(whiteText).width;
-            const blackTextWidth = ctx.measureText(blackText).width;
-
-            const spacing = 10;
-            const stoneSpacing = 5;
-
-            const totalWidth = nextTextWidth + spacing +
-                (stoneRadius * 2) + stoneSpacing + // next player stone
-                (stoneRadius * 2) + stoneSpacing + // white stone
-                whiteTextWidth + spacing +
-                (stoneRadius * 2) + stoneSpacing + // black stone
-                blackTextWidth;
-
-            // Start from center and work outward
-            let currentX = canvasWidth / 2 - totalWidth / 2;
-
-            // Draw "Next:"
+            // LEFT SIDE: Draw "Next:" indicator
             ctx.textAlign = 'left';
-            ctx.fillText(nextText, currentX, statusY);
-            currentX += nextTextWidth + spacing;
-
+            const nextText = 'Next:';
+            let leftX = boardLeftX;
+            
+            // Draw "Next:" text
+            ctx.fillText(nextText, leftX, statusY);
+            leftX += ctx.measureText(nextText).width + 10;
+            
             // Draw next player stone
             const nextPlayerColor = currentPlayer === 1 ? 'black' : 'white';
-            drawSmallStone(ctx, currentX + stoneRadius, statusY - fontSize / 4, stoneRadius, nextPlayerColor);
-            currentX += (stoneRadius * 2) + spacing;
+            drawSmallStone(ctx, leftX + stoneRadius, statusY - fontSize / 4, stoneRadius, nextPlayerColor);
 
-            // Draw white stone
-            drawSmallStone(ctx, currentX + stoneRadius, statusY - fontSize / 4, stoneRadius, 'white');
-            currentX += (stoneRadius * 2) + stoneSpacing;
-
-            // Draw white captures
-            ctx.fillText(whiteText, currentX, statusY);
-            currentX += whiteTextWidth + spacing;
-
+            // RIGHT SIDE: Draw capture scores
+            ctx.textAlign = 'right';
+            const boardRightX = boardLeftX + boardWidth;
+            let rightX = boardRightX;
+            
+            // Draw black captures (rightmost)
+            const blackText = `${blackCaptures}`;
+            ctx.fillText(blackText, rightX, statusY);
+            rightX -= ctx.measureText(blackText).width + 5;
+            
             // Draw black stone
-            drawSmallStone(ctx, currentX + stoneRadius, statusY - fontSize / 4, stoneRadius, 'black');
-            currentX += (stoneRadius * 2) + stoneSpacing;
-
-            // Draw black captures
-            ctx.fillText(blackText, currentX, statusY);
-        }
-
-        function drawBoard() {
+            drawSmallStone(ctx, rightX - stoneRadius, statusY - fontSize / 4, stoneRadius, 'black');
+            rightX -= (stoneRadius * 2) + 15;
+            
+            // Draw white captures
+            const whiteText = `${whiteCaptures}`;
+            ctx.fillText(whiteText, rightX, statusY);
+            rightX -= ctx.measureText(whiteText).width + 5;
+            
+            // Draw white stone
+            drawSmallStone(ctx, rightX - stoneRadius, statusY - fontSize / 4, stoneRadius, 'white');
+        }        function drawBoard() {
             if (!game) return;
 
             const ctx = canvas.getContext('2d');
@@ -2077,7 +2062,7 @@
             }
 
             // Draw game status above the board
-            drawGameStatus(ctx, displayWidth, offsetY, cellSize);
+            drawGameStatus(ctx, displayWidth, offsetY, cellSize, offsetX, boardPixelSize);
         }
 
         // Start the game
