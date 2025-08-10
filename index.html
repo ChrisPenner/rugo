@@ -793,6 +793,160 @@
         // Initialize wake lock system
         const wakeLockSystem = new WakeLockSystem();
 
+        // Confirmation preferences stored in localStorage
+        const confirmationPrefs = {
+            boardSizeChange: 'confirm_board_size_change',
+            newGame: 'confirm_new_game',
+            editMode: 'confirm_edit_mode'
+        };
+
+        // Utility function to show confirmation with "Don't notify me again" option
+        function showConfirmationWithOptOut(message, prefKey) {
+            // Check if user has opted out of this confirmation
+            const skipConfirm = localStorage.getItem(prefKey) === 'false';
+            if (skipConfirm) {
+                return true; // Always proceed if user opted out
+            }
+
+            // Create a custom dialog with checkbox
+            const dialog = document.createElement('div');
+            dialog.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                font-family: Arial, sans-serif;
+            `;
+
+            const dialogBox = document.createElement('div');
+            dialogBox.style.cssText = `
+                background: white;
+                padding: 24px;
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+                max-width: 400px;
+                min-width: 320px;
+                text-align: center;
+            `;
+
+            const messageText = document.createElement('p');
+            messageText.textContent = message;
+            messageText.style.cssText = `
+                margin: 0 0 20px 0;
+                font-size: 16px;
+                line-height: 1.4;
+                color: #333;
+            `;
+
+            const checkboxContainer = document.createElement('div');
+            checkboxContainer.style.cssText = `
+                margin: 16px 0 20px 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+            `;
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = 'dont-notify-again';
+            checkbox.style.cssText = `
+                margin: 0;
+                transform: scale(1.2);
+            `;
+
+            const checkboxLabel = document.createElement('label');
+            checkboxLabel.htmlFor = 'dont-notify-again';
+            checkboxLabel.textContent = "Don't ask me again";
+            checkboxLabel.style.cssText = `
+                font-size: 14px;
+                color: #666;
+                cursor: pointer;
+                user-select: none;
+            `;
+
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.cssText = `
+                display: flex;
+                gap: 12px;
+                justify-content: center;
+            `;
+
+            const cancelButton = document.createElement('button');
+            cancelButton.textContent = 'Cancel';
+            cancelButton.style.cssText = `
+                padding: 10px 20px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                background: #f8f9fa;
+                color: #333;
+                font-size: 14px;
+                cursor: pointer;
+                min-width: 80px;
+            `;
+
+            const confirmButton = document.createElement('button');
+            confirmButton.textContent = 'Continue';
+            confirmButton.style.cssText = `
+                padding: 10px 20px;
+                border: none;
+                border-radius: 4px;
+                background: #4CAF50;
+                color: white;
+                font-size: 14px;
+                cursor: pointer;
+                min-width: 80px;
+            `;
+
+            checkboxContainer.appendChild(checkbox);
+            checkboxContainer.appendChild(checkboxLabel);
+            buttonContainer.appendChild(cancelButton);
+            buttonContainer.appendChild(confirmButton);
+            dialogBox.appendChild(messageText);
+            dialogBox.appendChild(checkboxContainer);
+            dialogBox.appendChild(buttonContainer);
+            dialog.appendChild(dialogBox);
+            document.body.appendChild(dialog);
+
+            return new Promise((resolve) => {
+                const cleanup = () => {
+                    document.body.removeChild(dialog);
+                };
+
+                cancelButton.addEventListener('click', () => {
+                    if (checkbox.checked) {
+                        localStorage.setItem(prefKey, 'false');
+                    }
+                    cleanup();
+                    resolve(false);
+                });
+
+                confirmButton.addEventListener('click', () => {
+                    if (checkbox.checked) {
+                        localStorage.setItem(prefKey, 'false');
+                    }
+                    cleanup();
+                    resolve(true);
+                });
+
+                // Close on escape key
+                const handleKeydown = (e) => {
+                    if (e.key === 'Escape') {
+                        document.removeEventListener('keydown', handleKeydown);
+                        cleanup();
+                        resolve(false);
+                    }
+                };
+                document.addEventListener('keydown', handleKeydown);
+            });
+        }
+
         // Helper function to get board coordinates from mouse/touch event
         function getBoardPositionFromEvent(event) {
             if (!game) return null;
@@ -1141,9 +1295,12 @@
             });
 
             // Board size selector
-            document.getElementById('board-size').addEventListener('change', (event) => {
+            document.getElementById('board-size').addEventListener('change', async (event) => {
                 // Ask for confirmation before changing board size (which resets the game)
-                const confirmed = confirm('Changing the board size will start a new game and lose your current progress. Continue?');
+                const confirmed = await showConfirmationWithOptOut(
+                    'Changing the board size will start a new game and lose your current progress. Continue?',
+                    confirmationPrefs.boardSizeChange
+                );
                 if (!confirmed) {
                     // Revert the selection to the current board size
                     const currentBoardSize = game ? game.get_board_size() : 19;
@@ -1159,9 +1316,12 @@
             });
 
             // New game button
-            document.getElementById('new-game-btn').addEventListener('click', () => {
+            document.getElementById('new-game-btn').addEventListener('click', async () => {
                 // Ask for confirmation before starting a new game
-                const confirmed = confirm('Start a new game? This will lose your current progress.');
+                const confirmed = await showConfirmationWithOptOut(
+                    'Start a new game? This will lose your current progress.',
+                    confirmationPrefs.newGame
+                );
                 if (!confirmed) {
                     return;
                 }
@@ -1301,13 +1461,14 @@
             });
 
             // Edit mode toggle button
-            document.getElementById('edit-mode-btn').addEventListener('click', () => {
+            document.getElementById('edit-mode-btn').addEventListener('click', async () => {
                 const button = document.getElementById('edit-mode-btn');
 
                 if (!editMode && game && game.has_stones_on_board()) {
                     // Warn user about losing undo history
-                    const confirmed = confirm(
-                        'Entering edit mode will clear your undo history. Are you sure you want to continue?'
+                    const confirmed = await showConfirmationWithOptOut(
+                        'Entering edit mode will clear your undo history. Are you sure you want to continue?',
+                        confirmationPrefs.editMode
                     );
                     if (!confirmed) {
                         return;
