@@ -166,9 +166,15 @@
 
         .tertiary-button-row {
             display: grid;
-            grid-template-columns: auto auto auto;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
             gap: 6px;
             align-items: center;
+        }
+
+        /* Single button row for move numbers */
+        .tertiary-button-row:has(button:only-child) {
+            grid-template-columns: 1fr;
+            justify-items: center;
         }
 
 
@@ -490,6 +496,9 @@
                     <button id="edit-mode-btn">✏️ Edit Mode: OFF</button>
                     <button id="screenshot-btn">📷 Screenshot</button>
                 </div>
+                <div class="tertiary-button-row">
+                    <button id="move-numbers-btn">🔢 Move Numbers: OFF</button>
+                </div>
             </div>
         </div>
     </div>
@@ -505,6 +514,7 @@
         let editMode = false; // Track whether we're in edit mode
         let isDragging = false; // Track if we're currently dragging in edit mode
         let dragState = null; // The state to apply while dragging (0, 1, or 2)
+        let showMoveNumbers = false; // Track whether to display move numbers on stones
 
         // Sound system for game audio feedback
         class SoundSystem {
@@ -727,7 +737,8 @@
             soundEnabled: 'sound_enabled',
             wakeLockEnabled: 'wake_lock_enabled',
             preferredBoardSize: 'preferred_board_size',
-            lastGameState: 'last_game_state'
+            lastGameState: 'last_game_state',
+            moveNumbersEnabled: 'move_numbers_enabled'
         };
 
         // Function to save user preferences to localStorage
@@ -1078,6 +1089,12 @@
             } else {
                 updateWakeLockButton();
             }
+
+            // Restore move numbers preference
+            const moveNumbersEnabled = loadUserPreference(userPrefs.moveNumbersEnabled, false);
+            showMoveNumbers = moveNumbersEnabled;
+            const moveNumbersButton = document.getElementById('move-numbers-btn');
+            moveNumbersButton.textContent = showMoveNumbers ? '🔢 Move Numbers: ON' : '🔢 Move Numbers: OFF';
         }
 
         // Function to update wake lock button text
@@ -1712,7 +1729,7 @@
             document.getElementById('screenshot-btn').addEventListener('click', async () => {
                 const button = document.getElementById('screenshot-btn');
                 const originalText = button.textContent;
-                
+
                 try {
                     button.textContent = '📷 Capturing...';
                     button.disabled = true;
@@ -1720,17 +1737,17 @@
                     // Create a temporary canvas to capture just the board
                     const tempCanvas = document.createElement('canvas');
                     const tempCtx = tempCanvas.getContext('2d');
-                    
+
                     // Set canvas size to match the actual board
                     tempCanvas.width = canvas.width;
                     tempCanvas.height = canvas.height;
-                    
+
                     // Copy the current board state to the temporary canvas
                     tempCtx.drawImage(canvas, 0, 0);
-                    
+
                     // Convert canvas to data URL for display
                     const imageDataUrl = tempCanvas.toDataURL('image/png');
-                    
+
                     // Create modal dialog
                     const modal = document.createElement('div');
                     modal.style.cssText = `
@@ -1843,7 +1860,7 @@
                         try {
                             copyButton.textContent = '📋 Copying...';
                             copyButton.disabled = true;
-                            
+
                             tempCanvas.toBlob(async (blob) => {
                                 try {
                                     await navigator.clipboard.write([
@@ -1881,7 +1898,7 @@
                         document.body.appendChild(link);
                         link.click();
                         document.body.removeChild(link);
-                        
+
                         const originalSaveText = saveButton.textContent;
                         saveButton.textContent = '✅ Saved!';
                         setTimeout(() => {
@@ -1895,7 +1912,7 @@
                     };
 
                     closeButton.addEventListener('click', closeModal);
-                    
+
                     // Close on backdrop click
                     modal.addEventListener('click', (e) => {
                         if (e.target === modal) {
@@ -1916,18 +1933,18 @@
                     buttonContainer.appendChild(copyButton);
                     buttonContainer.appendChild(saveButton);
                     buttonContainer.appendChild(closeButton);
-                    
+
                     modalContent.appendChild(title);
                     modalContent.appendChild(screenshotImg);
                     modalContent.appendChild(buttonContainer);
                     modal.appendChild(modalContent);
-                    
+
                     document.body.appendChild(modal);
-                    
+
                     // Reset button state
                     button.textContent = originalText;
                     button.disabled = false;
-                    
+
                 } catch (error) {
                     console.error('Error creating screenshot:', error);
                     button.textContent = '❌ Error';
@@ -1936,7 +1953,26 @@
                         button.disabled = false;
                     }, 2000);
                 }
-            });            // Handle window resize and orientation changes
+            });
+
+            // Move numbers toggle button
+            document.getElementById('move-numbers-btn').addEventListener('click', () => {
+                showMoveNumbers = !showMoveNumbers;
+                const button = document.getElementById('move-numbers-btn');
+                button.textContent = showMoveNumbers ? '🔢 Move Numbers: ON' : '🔢 Move Numbers: OFF';
+
+                // Save preference
+                saveUserPreference(userPrefs.moveNumbersEnabled, showMoveNumbers);
+
+                // Redraw board to show/hide move numbers
+                if (game) {
+                    drawBoard();
+                }
+
+                console.log('Move numbers:', showMoveNumbers ? 'ON' : 'OFF');
+            });
+
+            // Handle window resize and orientation changes
             let resizeTimeout;
             window.addEventListener('resize', () => {
                 // Debounce resize events
@@ -2194,6 +2230,24 @@
                             ctx.strokeStyle = '#000';
                             ctx.lineWidth = Math.max(1, cellSize * 0.05); // Scale stroke width
                             ctx.stroke();
+                        }
+
+                        // Draw move number if enabled
+                        if (showMoveNumbers) {
+                            const moveNumber = game.get_move_number(x, y);
+                            if (moveNumber > 0) {
+                                // Set text properties
+                                const fontSize = Math.max(8, cellSize * 0.25);
+                                ctx.font = `bold ${fontSize}px Arial`;
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+
+                                // Use contrasting text color
+                                ctx.fillStyle = state === 1 ? '#FFF' : '#000'; // White text on black stones, black text on white stones
+
+                                // Draw the move number
+                                ctx.fillText(moveNumber.toString(), centerX, centerY);
+                            }
                         }
                     }
                 }

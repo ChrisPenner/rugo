@@ -28,16 +28,19 @@ pub enum StoneState {
 #[derive(Clone, Debug)]
 struct GameState {
     board: [[StoneState; MAX_BOARD_SIZE]; MAX_BOARD_SIZE],
+    move_numbers: [[u32; MAX_BOARD_SIZE]; MAX_BOARD_SIZE], // Track move number for each position (0 = no move)
     current_player: StoneState,
     black_captures: u32,
     white_captures: u32,
     last_move: Option<(usize, usize)>, // Track the last move position
+    move_count: u32, // Total number of moves made
 }
 
 // Simple Go game struct without WebGPU for now
 #[wasm_bindgen]
 pub struct GoGame {
     board: [[StoneState; MAX_BOARD_SIZE]; MAX_BOARD_SIZE],
+    move_numbers: [[u32; MAX_BOARD_SIZE]; MAX_BOARD_SIZE], // Track move number for each position (0 = no move)
     board_size: usize,
     current_player: StoneState,
     canvas_width: u32,
@@ -47,6 +50,7 @@ pub struct GoGame {
     black_captures: u32,
     white_captures: u32,
     last_move: Option<(usize, usize)>, // Track the last move position
+    move_count: u32, // Total number of moves made
 }
 
 #[wasm_bindgen]
@@ -71,16 +75,20 @@ impl GoGame {
         };
 
         let initial_board = [[StoneState::Empty; MAX_BOARD_SIZE]; MAX_BOARD_SIZE];
+        let initial_move_numbers = [[0u32; MAX_BOARD_SIZE]; MAX_BOARD_SIZE];
         let initial_state = GameState {
             board: initial_board,
+            move_numbers: initial_move_numbers,
             current_player: StoneState::Black,
             black_captures: 0,
             white_captures: 0,
             last_move: None,
+            move_count: 0,
         };
 
         GoGame {
             board: initial_board,
+            move_numbers: initial_move_numbers,
             board_size: valid_size,
             current_player: StoneState::Black,
             canvas_width: canvas.width(),
@@ -90,6 +98,7 @@ impl GoGame {
             black_captures: 0,
             white_captures: 0,
             last_move: None,
+            move_count: 0,
         }
     }
 
@@ -114,6 +123,13 @@ impl GoGame {
             StoneState::White => 2,
             StoneState::Empty => 0,
         }
+    }
+
+    pub fn get_move_number(&self, x: usize, y: usize) -> u32 {
+        if x >= self.board_size || y >= self.board_size {
+            return 0;
+        }
+        self.move_numbers[y][x]
     }
 
     pub fn handle_click(&mut self, x: f32, y: f32) {
@@ -167,6 +183,10 @@ impl GoGame {
         // Place the stone
         self.board[board_y][board_x] = placed_stone;
 
+        // Increment move count and assign move number to this position
+        self.move_count += 1;
+        self.move_numbers[board_y][board_x] = self.move_count;
+
         // Update last move position
         self.last_move = Some((board_x, board_y));
 
@@ -209,10 +229,12 @@ impl GoGame {
         // Save the new state after the move is complete
         let new_state = GameState {
             board: self.board,
+            move_numbers: self.move_numbers,
             current_player: self.current_player,
             black_captures: self.black_captures,
             white_captures: self.white_captures,
             last_move: self.last_move,
+            move_count: self.move_count,
         };
         self.history.push(new_state);
         self.history_index = self.history.len() - 1;
@@ -226,10 +248,12 @@ impl GoGame {
             self.history_index -= 1;
             let state = &self.history[self.history_index];
             self.board = state.board;
+            self.move_numbers = state.move_numbers;
             self.current_player = state.current_player;
             self.black_captures = state.black_captures;
             self.white_captures = state.white_captures;
             self.last_move = state.last_move;
+            self.move_count = state.move_count;
             console_log!("Undo: moved to state {}", self.history_index);
             true
         } else {
@@ -242,10 +266,12 @@ impl GoGame {
             self.history_index += 1;
             let state = &self.history[self.history_index];
             self.board = state.board;
+            self.move_numbers = state.move_numbers;
             self.current_player = state.current_player;
             self.black_captures = state.black_captures;
             self.white_captures = state.white_captures;
             self.last_move = state.last_move;
+            self.move_count = state.move_count;
             console_log!("Redo: moved to state {}", self.history_index);
             true
         } else {
@@ -308,10 +334,12 @@ impl GoGame {
         // Save the new state after the pass
         let new_state = GameState {
             board: self.board,
+            move_numbers: self.move_numbers,
             current_player: self.current_player,
             black_captures: self.black_captures,
             white_captures: self.white_captures,
             last_move: self.last_move,
+            move_count: self.move_count,
         };
         self.history.push(new_state);
         self.history_index = self.history.len() - 1;
@@ -388,19 +416,23 @@ impl GoGame {
                     if let Some(board) = decode_board_rle(&state_bytes, idx, board_size) {
                         // Update game state
                         self.board = board;
+                        self.move_numbers = [[0u32; MAX_BOARD_SIZE]; MAX_BOARD_SIZE]; // Reset move numbers when loading
                         self.board_size = board_size;
                         self.current_player = current_player;
                         self.black_captures = black_captures;
                         self.white_captures = white_captures;
                         self.last_move = None; // Clear last move when loading state
+                        self.move_count = 0; // Reset move count when loading
 
                         // Reset history to current state
                         let new_state = GameState {
                             board: self.board,
+                            move_numbers: self.move_numbers,
                             current_player: self.current_player,
                             black_captures: self.black_captures,
                             white_captures: self.white_captures,
                             last_move: self.last_move,
+                            move_count: self.move_count,
                         };
                         self.history = vec![new_state];
                         self.history_index = 0;
@@ -465,6 +497,7 @@ impl GoGame {
 
         for (cap_x, cap_y) in to_capture {
             self.board[cap_y][cap_x] = StoneState::Empty;
+            self.move_numbers[cap_y][cap_x] = 0; // Clear move number when captured
             captured += 1;
         }
 
@@ -597,6 +630,12 @@ impl GoGame {
         };
 
         self.board[y][x] = stone_state;
+
+        // Clear move number when setting position in edit mode
+        if stone_state == StoneState::Empty {
+            self.move_numbers[y][x] = 0;
+        }
+
         return "Position set successfully".to_string();
     }
 }
