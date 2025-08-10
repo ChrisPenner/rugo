@@ -604,12 +604,17 @@
                 }
             }
 
-            // Create a bright, sharp tap sound like stone on wood
+            // Create a bright, sharp tap sound like stone on wood with subtle randomness
             async playTapSound() {
                 if (!this.enabled || !this.audioContext) return;
 
                 try {
                     await this.ensureAudioContext();
+
+                    // Add subtle randomness for natural variation
+                    const randomVariation = () => 0.85 + Math.random() * 0.3; // ±15% variation
+                    const pitchVariation = () => 0.9 + Math.random() * 0.2; // ±10% pitch variation
+                    const timingVariation = () => 0.8 + Math.random() * 0.4; // ±20% timing variation
 
                     // Create multiple oscillators for a rich, full-spectrum sound
                     const oscillator1 = this.audioContext.createOscillator(); // Primary mid-range
@@ -629,43 +634,53 @@
                     gainNode3.connect(masterGain);
                     masterGain.connect(this.audioContext.destination);
 
-                    // Primary tap sound - bright and sharp like wood contact
-                    oscillator1.frequency.setValueAtTime(1200, this.audioContext.currentTime); // Higher starting frequency
-                    oscillator1.frequency.exponentialRampToValueAtTime(400, this.audioContext.currentTime + 0.008); // Faster frequency drop
+                    // Primary tap sound with slight pitch variation
+                    const baseFreq1 = 1200 * pitchVariation();
+                    const endFreq1 = 400 * pitchVariation();
+                    oscillator1.frequency.setValueAtTime(baseFreq1, this.audioContext.currentTime);
+                    oscillator1.frequency.exponentialRampToValueAtTime(endFreq1, this.audioContext.currentTime + 0.008 * timingVariation());
 
-                    // Secondary harmonic for brightness and wooden resonance
-                    oscillator2.frequency.setValueAtTime(2400, this.audioContext.currentTime); // High harmonic
-                    oscillator2.frequency.exponentialRampToValueAtTime(800, this.audioContext.currentTime + 0.005); // Even faster drop
+                    // Secondary harmonic with variation
+                    const baseFreq2 = 2400 * pitchVariation();
+                    const endFreq2 = 800 * pitchVariation();
+                    oscillator2.frequency.setValueAtTime(baseFreq2, this.audioContext.currentTime);
+                    oscillator2.frequency.exponentialRampToValueAtTime(endFreq2, this.audioContext.currentTime + 0.005 * timingVariation());
 
-                    // Low frequency component for body and warmth
-                    oscillator3.frequency.setValueAtTime(200, this.audioContext.currentTime); // Low fundamental
-                    oscillator3.frequency.exponentialRampToValueAtTime(80, this.audioContext.currentTime + 0.012); // Slower decay for body
+                    // Low frequency component with variation
+                    const baseFreq3 = 200 * pitchVariation();
+                    const endFreq3 = 80 * pitchVariation();
+                    oscillator3.frequency.setValueAtTime(baseFreq3, this.audioContext.currentTime);
+                    oscillator3.frequency.exponentialRampToValueAtTime(endFreq3, this.audioContext.currentTime + 0.012 * timingVariation());
 
-                    // Sharp attack envelope for primary sound
+                    // Sharp attack envelope for primary sound with volume variation
                     gainNode1.gain.setValueAtTime(0, this.audioContext.currentTime);
-                    gainNode1.gain.linearRampToValueAtTime(this.volume * 0.8, this.audioContext.currentTime + 0.0005); // Very sharp attack
-                    gainNode1.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.04);
+                    gainNode1.gain.linearRampToValueAtTime(this.volume * 0.8 * randomVariation(), this.audioContext.currentTime + 0.0005 * timingVariation());
+                    gainNode1.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.04 * timingVariation());
 
-                    // Brighter harmonic with shorter duration
+                    // Brighter harmonic with variation
                     gainNode2.gain.setValueAtTime(0, this.audioContext.currentTime);
-                    gainNode2.gain.linearRampToValueAtTime(this.volume * 0.4, this.audioContext.currentTime + 0.0003); // Even sharper attack
-                    gainNode2.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.02); // Shorter duration
+                    gainNode2.gain.linearRampToValueAtTime(this.volume * 0.4 * randomVariation(), this.audioContext.currentTime + 0.0003 * timingVariation());
+                    gainNode2.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.02 * timingVariation());
 
-                    // Low frequency body - subtle but adds warmth
+                    // Low frequency body with variation
                     gainNode3.gain.setValueAtTime(0, this.audioContext.currentTime);
-                    gainNode3.gain.linearRampToValueAtTime(this.volume * 0.3, this.audioContext.currentTime + 0.001); // Slightly slower attack
-                    gainNode3.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.035); // Longer sustain for body
+                    gainNode3.gain.linearRampToValueAtTime(this.volume * 0.3 * randomVariation(), this.audioContext.currentTime + 0.001 * timingVariation());
+                    gainNode3.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.035 * timingVariation());
 
-                    // Master volume control
-                    masterGain.gain.setValueAtTime(this.volume, this.audioContext.currentTime);
+                    // Master volume control with slight variation
+                    masterGain.gain.setValueAtTime(this.volume * randomVariation(), this.audioContext.currentTime);
 
-                    // Play the sound
+                    // Play the sound with randomized durations
+                    const duration1 = 0.04 * timingVariation();
+                    const duration2 = 0.02 * timingVariation();
+                    const duration3 = 0.035 * timingVariation();
+
                     oscillator1.start(this.audioContext.currentTime);
-                    oscillator1.stop(this.audioContext.currentTime + 0.04);
+                    oscillator1.stop(this.audioContext.currentTime + duration1);
                     oscillator2.start(this.audioContext.currentTime);
-                    oscillator2.stop(this.audioContext.currentTime + 0.02);
+                    oscillator2.stop(this.audioContext.currentTime + duration2);
                     oscillator3.start(this.audioContext.currentTime);
-                    oscillator3.stop(this.audioContext.currentTime + 0.035);
+                    oscillator3.stop(this.audioContext.currentTime + duration3);
 
                 } catch (error) {
                     console.warn('Error playing sound:', error);
