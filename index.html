@@ -579,6 +579,7 @@
         const currentPlayerText = document.getElementById('current-player');
         let suppressUrlUpdate = false; // Flag to prevent infinite loops
         let eventListenersSetup = false; // Flag to prevent duplicate event listeners
+        let hoverPosition = null; // Track mouse position for hover preview
 
         // Sound system for game audio feedback
         class SoundSystem {
@@ -714,7 +715,7 @@
                 this.wakeLock = null;
                 this.enabled = false;
                 this.supported = 'wakeLock' in navigator;
-                
+
                 // Handle visibility change to re-acquire wake lock
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'visible' && this.enabled) {
@@ -732,12 +733,12 @@
                 try {
                     this.wakeLock = await navigator.wakeLock.request('screen');
                     console.log('Wake lock acquired - screen will stay on');
-                    
+
                     // Listen for wake lock release
                     this.wakeLock.addEventListener('release', () => {
                         console.log('Wake lock released');
                     });
-                    
+
                     return true;
                 } catch (error) {
                     console.warn('Failed to acquire wake lock:', error);
@@ -788,6 +789,69 @@
 
         // Initialize wake lock system
         const wakeLockSystem = new WakeLockSystem();
+
+        // Helper function to get board coordinates from mouse/touch event
+        function getBoardPositionFromEvent(event) {
+            if (!game) return null;
+
+            const rect = canvas.getBoundingClientRect();
+            let clientX, clientY;
+
+            // Handle both touch and mouse events
+            if (event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchmove') {
+                if (event.touches && event.touches.length > 0) {
+                    clientX = event.touches[0].clientX;
+                    clientY = event.touches[0].clientY;
+                } else if (event.changedTouches && event.changedTouches.length > 0) {
+                    clientX = event.changedTouches[0].clientX;
+                    clientY = event.changedTouches[0].clientY;
+                } else {
+                    return null;
+                }
+            } else {
+                clientX = event.clientX;
+                clientY = event.clientY;
+            }
+
+            // Calculate coordinates relative to the displayed canvas size
+            // Account for device pixel ratio scaling
+            const devicePixelRatio = window.devicePixelRatio || 1;
+            const displayWidth = canvas.width / devicePixelRatio;
+            const displayHeight = canvas.height / devicePixelRatio;
+
+            const canvasX = (clientX - rect.left) * (displayWidth / rect.width);
+            const canvasY = (clientY - rect.top) * (displayHeight / rect.height);
+
+            // Get current board size
+            const currentBoardSize = game.get_board_size();
+
+            // Calculate board layout (same as in drawBoard)
+            const cellSize = Math.min(displayWidth, displayHeight) / (currentBoardSize + 1);
+            const boardPixelSize = cellSize * (currentBoardSize - 1);
+            const offsetX = (displayWidth - boardPixelSize) / 2;
+            const offsetY = (displayHeight - boardPixelSize) / 2;
+
+            // Convert canvas coordinates to board coordinates
+            const boardX = Math.round((canvasX - offsetX) / cellSize);
+            const boardY = Math.round((canvasY - offsetY) / cellSize);
+
+            return { x: boardX, y: boardY };
+        }
+
+        // Helper function to check if board position is valid for placing a stone
+        function isValidBoardPosition(boardX, boardY) {
+            if (!game) return false;
+
+            const currentBoardSize = game.get_board_size();
+
+            // Check if position is within board bounds
+            if (boardX < 0 || boardX >= currentBoardSize || boardY < 0 || boardY >= currentBoardSize) {
+                return false;
+            }
+
+            // Check if position is empty
+            return game.get_board_state(boardX, boardY) === 0;
+        }
 
         async function initGame() {
             try {
@@ -858,54 +922,21 @@
                 // Prevent default touch behaviors
                 event.preventDefault();
 
-                const rect = canvas.getBoundingClientRect();
-                let clientX, clientY;
+                const boardPos = getBoardPositionFromEvent(event);
+                if (!boardPos) return;
 
-                // Handle both touch and mouse events
-                if (event.type === 'touchstart' || event.type === 'touchend') {
-                    if (event.touches && event.touches.length > 0) {
-                        clientX = event.touches[0].clientX;
-                        clientY = event.touches[0].clientY;
-                    } else if (event.changedTouches && event.changedTouches.length > 0) {
-                        clientX = event.changedTouches[0].clientX;
-                        clientY = event.changedTouches[0].clientY;
-                    } else {
-                        return;
-                    }
-                } else {
-                    clientX = event.clientX;
-                    clientY = event.clientY;
-                }
+                const { x: boardX, y: boardY } = boardPos;
 
-                // Calculate coordinates relative to the displayed canvas size
-                // Account for device pixel ratio scaling
-                const devicePixelRatio = window.devicePixelRatio || 1;
-                const displayWidth = canvas.width / devicePixelRatio;
-                const displayHeight = canvas.height / devicePixelRatio;
-
-                const canvasX = (clientX - rect.left) * (displayWidth / rect.width);
-                const canvasY = (clientY - rect.top) * (displayHeight / rect.height);
-
-                // Get current board size
-                const currentBoardSize = game.get_board_size();
-
-                // Calculate board layout (same as in drawBoard)
-                const cellSize = Math.min(displayWidth, displayHeight) / (currentBoardSize + 1);
-                const boardPixelSize = cellSize * (currentBoardSize - 1);
-                const offsetX = (displayWidth - boardPixelSize) / 2;
-                const offsetY = (displayHeight - boardPixelSize) / 2;
-
-                // Convert canvas coordinates to board coordinates
-                const boardX = Math.round((canvasX - offsetX) / cellSize);
-                const boardY = Math.round((canvasY - offsetY) / cellSize);
-
-                // Check if click is within board bounds
-                if (boardX >= 0 && boardX < currentBoardSize && boardY >= 0 && boardY < currentBoardSize) {
+                // Check if click is within board bounds and position is valid
+                if (isValidBoardPosition(boardX, boardY)) {
                     try {
                         const result = game.handle_board_click(boardX, boardY);
                         if (result === "Move successful") {
                             // Play sound effect for successful stone placement
                             soundSystem.playTapSound();
+
+                            // Clear hover position after successful move
+                            hoverPosition = null;
 
                             drawBoard();
                             updateUndoRedoButtons();
@@ -922,6 +953,25 @@
 
             // Canvas click handler
             canvas.addEventListener('click', handleBoardInteraction);
+
+            // Mouse move handler for hover preview
+            canvas.addEventListener('mousemove', (event) => {
+                if (!game) return;
+
+                const boardPos = getBoardPositionFromEvent(event);
+                if (boardPos && isValidBoardPosition(boardPos.x, boardPos.y)) {
+                    hoverPosition = boardPos;
+                } else {
+                    hoverPosition = null;
+                }
+                drawBoard(); // Redraw to show/hide hover preview
+            });
+
+            // Mouse leave handler to clear hover preview
+            canvas.addEventListener('mouseleave', () => {
+                hoverPosition = null;
+                drawBoard();
+            });
 
             // Touch event handlers for better mobile support
             canvas.addEventListener('touchstart', (event) => {
@@ -1093,7 +1143,7 @@
             // Wake lock toggle button
             document.getElementById('wake-lock-btn').addEventListener('click', async () => {
                 const button = document.getElementById('wake-lock-btn');
-                
+
                 if (!wakeLockSystem.isSupported()) {
                     button.textContent = '❌ Keep Screen On: Not Supported';
                     button.disabled = true;
@@ -1298,6 +1348,32 @@
                             ctx.stroke();
                         }
                     }
+                }
+            }
+
+            // Draw hover preview stone
+            if (hoverPosition && isValidBoardPosition(hoverPosition.x, hoverPosition.y)) {
+                const centerX = offsetX + hoverPosition.x * cellSize;
+                const centerY = offsetY + hoverPosition.y * cellSize;
+                const radius = cellSize * 0.4;
+                const currentPlayer = game.get_current_player();
+
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+
+                if (currentPlayer === 1) { // Black preview
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; // Translucent black
+                    ctx.fill();
+                    // Add a subtle border to make it more visible
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+                    ctx.lineWidth = Math.max(1, cellSize * 0.03);
+                    ctx.stroke();
+                } else { // White preview
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; // Translucent white
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)'; // Subtle border
+                    ctx.lineWidth = Math.max(1, cellSize * 0.05);
+                    ctx.stroke();
                 }
             }
 
