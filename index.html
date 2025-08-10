@@ -96,6 +96,8 @@
             margin-top: 8px;
             text-align: center;
             font-size: 14px;
+            display: flex;
+            flex-direction: row;
         }
 
         .game-status #current-player {
@@ -559,10 +561,8 @@
             <!-- Compact game status directly under the board -->
             <div class="game-status">
                 <div id="current-player">Current Player: Black</div>
-                <div id="score-display">
-                    <div>Black Captures: <span id="black-score">0</span></div>
-                    <div>White Captures: <span id="white-score">0</span></div>
-                </div>
+                <div>Black Captures: <span id="black-score">0</span></div>
+                <div>White Captures: <span id="white-score">0</span></div>
             </div>
         </div>
 
