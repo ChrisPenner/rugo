@@ -127,8 +127,11 @@ impl GoGame {
         self.white_captures = 0;
         self.last_move = None;
 
+        // Collect moves to avoid borrow checker issues
+        let moves_to_replay: Vec<Move> = self.move_sequence.iter().take(target_index).cloned().collect();
+
         // Replay moves up to target_index
-        for (i, mv) in self.move_sequence.iter().enumerate().take(target_index) {
+        for (i, mv) in moves_to_replay.iter().enumerate() {
             match (mv.x, mv.y) {
                 (Some(x), Some(y)) => {
                     // Stone placement move
@@ -420,6 +423,10 @@ impl GoGame {
                     // Pass move: use special encoding 0xFFFF
                     state_bytes.push(0xFF);
                     state_bytes.push(0xFF);
+                }
+                (None, Some(_)) | (Some(_), None) => {
+                    // Invalid move data - this should never happen in a properly constructed move sequence
+                    console_log!("Warning: Invalid move data encountered during serialization");
                 }
             }
         }
