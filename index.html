@@ -604,33 +604,68 @@
                 }
             }
 
-            // Create a subtle tap sound using Web Audio API
+            // Create a bright, sharp tap sound like stone on wood
             async playTapSound() {
                 if (!this.enabled || !this.audioContext) return;
 
                 try {
                     await this.ensureAudioContext();
 
-                    // Create oscillator for the tap sound
-                    const oscillator = this.audioContext.createOscillator();
-                    const gainNode = this.audioContext.createGain();
+                    // Create multiple oscillators for a rich, full-spectrum sound
+                    const oscillator1 = this.audioContext.createOscillator(); // Primary mid-range
+                    const oscillator2 = this.audioContext.createOscillator(); // High harmonic
+                    const oscillator3 = this.audioContext.createOscillator(); // Low body
+                    const gainNode1 = this.audioContext.createGain();
+                    const gainNode2 = this.audioContext.createGain();
+                    const gainNode3 = this.audioContext.createGain();
+                    const masterGain = this.audioContext.createGain();
 
                     // Connect nodes
-                    oscillator.connect(gainNode);
-                    gainNode.connect(this.audioContext.destination);
+                    oscillator1.connect(gainNode1);
+                    oscillator2.connect(gainNode2);
+                    oscillator3.connect(gainNode3);
+                    gainNode1.connect(masterGain);
+                    gainNode2.connect(masterGain);
+                    gainNode3.connect(masterGain);
+                    masterGain.connect(this.audioContext.destination);
 
-                    // Configure the tap sound - short, subtle click
-                    oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime); // Higher frequency for crisp sound
-                    oscillator.frequency.exponentialRampToValueAtTime(200, this.audioContext.currentTime + 0.01); // Quick frequency drop
+                    // Primary tap sound - bright and sharp like wood contact
+                    oscillator1.frequency.setValueAtTime(1200, this.audioContext.currentTime); // Higher starting frequency
+                    oscillator1.frequency.exponentialRampToValueAtTime(400, this.audioContext.currentTime + 0.008); // Faster frequency drop
 
-                    // Very short envelope for a crisp tap
-                    gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-                    gainNode.gain.linearRampToValueAtTime(this.volume, this.audioContext.currentTime + 0.001);
-                    gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.05);
+                    // Secondary harmonic for brightness and wooden resonance
+                    oscillator2.frequency.setValueAtTime(2400, this.audioContext.currentTime); // High harmonic
+                    oscillator2.frequency.exponentialRampToValueAtTime(800, this.audioContext.currentTime + 0.005); // Even faster drop
+
+                    // Low frequency component for body and warmth
+                    oscillator3.frequency.setValueAtTime(200, this.audioContext.currentTime); // Low fundamental
+                    oscillator3.frequency.exponentialRampToValueAtTime(80, this.audioContext.currentTime + 0.012); // Slower decay for body
+
+                    // Sharp attack envelope for primary sound
+                    gainNode1.gain.setValueAtTime(0, this.audioContext.currentTime);
+                    gainNode1.gain.linearRampToValueAtTime(this.volume * 0.8, this.audioContext.currentTime + 0.0005); // Very sharp attack
+                    gainNode1.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.04);
+
+                    // Brighter harmonic with shorter duration
+                    gainNode2.gain.setValueAtTime(0, this.audioContext.currentTime);
+                    gainNode2.gain.linearRampToValueAtTime(this.volume * 0.4, this.audioContext.currentTime + 0.0003); // Even sharper attack
+                    gainNode2.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.02); // Shorter duration
+
+                    // Low frequency body - subtle but adds warmth
+                    gainNode3.gain.setValueAtTime(0, this.audioContext.currentTime);
+                    gainNode3.gain.linearRampToValueAtTime(this.volume * 0.3, this.audioContext.currentTime + 0.001); // Slightly slower attack
+                    gainNode3.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.035); // Longer sustain for body
+
+                    // Master volume control
+                    masterGain.gain.setValueAtTime(this.volume, this.audioContext.currentTime);
 
                     // Play the sound
-                    oscillator.start(this.audioContext.currentTime);
-                    oscillator.stop(this.audioContext.currentTime + 0.05);
+                    oscillator1.start(this.audioContext.currentTime);
+                    oscillator1.stop(this.audioContext.currentTime + 0.04);
+                    oscillator2.start(this.audioContext.currentTime);
+                    oscillator2.stop(this.audioContext.currentTime + 0.02);
+                    oscillator3.start(this.audioContext.currentTime);
+                    oscillator3.stop(this.audioContext.currentTime + 0.035);
 
                 } catch (error) {
                     console.warn('Error playing sound:', error);
