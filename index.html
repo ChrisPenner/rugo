@@ -178,6 +178,14 @@
             justify-items: center;
         }
 
+        .tertiary-button-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            align-items: center;
+        }
+
+
         .secondary-button-row select {
             padding: 8px 10px;
             font-size: 13px;
@@ -555,8 +563,9 @@
                     </select>
                     <button id="copy-url-btn">Copy Game State</button>
                 </div>
-                <div class="secondary-button-row single-button-row">
+                <div class="tertiary-button-row">
                     <button id="sound-toggle-btn">🔊 Sound: ON</button>
+                    <button id="wake-lock-btn">💡 Prevent sleep: OFF</button>
                 </div>
             </div>
         </div>
@@ -699,8 +708,86 @@
             }
         }
 
+        // Wake lock system to prevent screen from dimming/sleeping
+        class WakeLockSystem {
+            constructor() {
+                this.wakeLock = null;
+                this.enabled = false;
+                this.supported = 'wakeLock' in navigator;
+                
+                // Handle visibility change to re-acquire wake lock
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible' && this.enabled) {
+                        this.requestWakeLock();
+                    }
+                });
+            }
+
+            async requestWakeLock() {
+                if (!this.supported) {
+                    console.warn('Wake Lock API not supported');
+                    return false;
+                }
+
+                try {
+                    this.wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake lock acquired - screen will stay on');
+                    
+                    // Listen for wake lock release
+                    this.wakeLock.addEventListener('release', () => {
+                        console.log('Wake lock released');
+                    });
+                    
+                    return true;
+                } catch (error) {
+                    console.warn('Failed to acquire wake lock:', error);
+                    return false;
+                }
+            }
+
+            async releaseWakeLock() {
+                if (this.wakeLock) {
+                    try {
+                        await this.wakeLock.release();
+                        this.wakeLock = null;
+                        console.log('Wake lock manually released');
+                    } catch (error) {
+                        console.warn('Error releasing wake lock:', error);
+                    }
+                }
+            }
+
+            async toggle() {
+                if (this.enabled) {
+                    // Turn off wake lock
+                    this.enabled = false;
+                    await this.releaseWakeLock();
+                    return false;
+                } else {
+                    // Turn on wake lock
+                    this.enabled = true;
+                    const success = await this.requestWakeLock();
+                    if (!success) {
+                        this.enabled = false;
+                    }
+                    return this.enabled;
+                }
+            }
+
+            isSupported() {
+                return this.supported;
+            }
+
+            isEnabled() {
+                return this.enabled;
+            }
+        }
+
         // Initialize sound system
         const soundSystem = new SoundSystem();
+
+        // Initialize wake lock system
+        const wakeLockSystem = new WakeLockSystem();
 
         async function initGame() {
             try {
@@ -1000,6 +1087,33 @@
                     soundSystem.playTapSound();
                 } else {
                     button.textContent = '🔇 Sound: OFF';
+                }
+            });
+
+            // Wake lock toggle button
+            document.getElementById('wake-lock-btn').addEventListener('click', async () => {
+                const button = document.getElementById('wake-lock-btn');
+                
+                if (!wakeLockSystem.isSupported()) {
+                    button.textContent = '❌ Keep Screen On: Not Supported';
+                    button.disabled = true;
+                    button.hidden = true;
+                    console.warn('Wake Lock API not supported on this device/browser');
+                    return;
+                }
+
+                try {
+                    const enabled = await wakeLockSystem.toggle();
+                    if (enabled) {
+                        button.textContent = '💡 Prevent Sleep: ON';
+                        console.log('Screen will stay on while game is active');
+                    } else {
+                        button.textContent = '💡 Prevent Sleep: OFF';
+                        console.log('Screen can dim/sleep normally');
+                    }
+                } catch (error) {
+                    console.error('Error toggling wake lock:', error);
+                    button.textContent = '❌ Prevent Sleep: Error';
                 }
             });
 
