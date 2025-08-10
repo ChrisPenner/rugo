@@ -307,25 +307,30 @@
         @media (max-width: 768px) {
             .container {
                 padding: 20px 3px 3px 3px;
-                gap: 5px; /* Direct gap between board and controls */
+                gap: 5px;
+                /* Direct gap between board and controls */
             }
 
             .game-area {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                margin-top: 0; /* Remove top margin to use all available space */
-                padding-bottom: 0; /* No bottom padding - controls will be right below */
+                margin-top: 0;
+                /* Remove top margin to use all available space */
+                padding-bottom: 0;
+                /* No bottom padding - controls will be right below */
             }
 
             .canvas-container {
                 max-width: min(92vmin, 95vw);
                 max-height: min(92vmin, 95vw);
-                margin-bottom: 0; /* No bottom margin - controls will be right below */
+                margin-bottom: 0;
+                /* No bottom margin - controls will be right below */
             }
 
             .controls {
-                flex-shrink: 0; /* Don't shrink the controls */
+                flex-shrink: 0;
+                /* Don't shrink the controls */
             }
 
             .primary-controls button {
@@ -1665,12 +1670,30 @@
                         magnifierCtx.beginPath();
                         magnifierCtx.arc(stoneMagnifierX, stoneMagnifierY, stoneRadius, 0, 2 * Math.PI);
 
-                        if (currentPlayer === 1) { // Black
-                            magnifierCtx.fillStyle = '#000';
+                        if (currentPlayer === 1) { // Black stone with gradient
+                            // Create radial gradient for black stone in magnifier
+                            const gradient = magnifierCtx.createRadialGradient(
+                                stoneMagnifierX - stoneRadius * 0.3, stoneMagnifierY - stoneRadius * 0.3, 0,
+                                stoneMagnifierX, stoneMagnifierY, stoneRadius
+                            );
+                            gradient.addColorStop(0, '#444'); // Lighter highlight
+                            gradient.addColorStop(0.3, '#222'); // Mid tone
+                            gradient.addColorStop(1, '#000'); // Dark edge
+
+                            magnifierCtx.fillStyle = gradient;
                             magnifierCtx.fill();
                             magnifierCtx.strokeStyle = '#333';
-                        } else { // White
-                            magnifierCtx.fillStyle = '#fff';
+                        } else { // White stone with gradient
+                            // Create radial gradient for white stone in magnifier
+                            const gradient = magnifierCtx.createRadialGradient(
+                                stoneMagnifierX - stoneRadius * 0.3, stoneMagnifierY - stoneRadius * 0.3, 0,
+                                stoneMagnifierX, stoneMagnifierY, stoneRadius
+                            );
+                            gradient.addColorStop(0, '#FFF'); // Bright highlight
+                            gradient.addColorStop(0.7, '#F5F5F5'); // Slight shadow
+                            gradient.addColorStop(1, '#E0E0E0'); // Darker edge
+
+                            magnifierCtx.fillStyle = gradient;
                             magnifierCtx.fill();
                             magnifierCtx.strokeStyle = '#ccc';
                         }
@@ -2388,10 +2411,28 @@
             ctx.arc(x, y, radius, 0, 2 * Math.PI);
 
             if (color === 'black') {
-                ctx.fillStyle = '#000';
+                // Create radial gradient for small black stone
+                const gradient = ctx.createRadialGradient(
+                    x - radius * 0.3, y - radius * 0.3, 0, // Light source from top-left
+                    x, y, radius
+                );
+                gradient.addColorStop(0, '#444'); // Lighter highlight
+                gradient.addColorStop(0.3, '#222'); // Mid tone
+                gradient.addColorStop(1, '#000'); // Dark edge
+
+                ctx.fillStyle = gradient;
                 ctx.fill();
             } else {
-                ctx.fillStyle = '#fff';
+                // Create radial gradient for small white stone
+                const gradient = ctx.createRadialGradient(
+                    x - radius * 0.3, y - radius * 0.3, 0, // Light source from top-left
+                    x, y, radius
+                );
+                gradient.addColorStop(0, '#FFF'); // Bright highlight
+                gradient.addColorStop(0.7, '#F5F5F5'); // Slight shadow
+                gradient.addColorStop(1, '#E0E0E0'); // Darker edge
+
+                ctx.fillStyle = gradient;
                 ctx.fill();
                 ctx.strokeStyle = '#000';
                 ctx.lineWidth = 1;
@@ -2545,11 +2586,29 @@
                         ctx.beginPath();
                         ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
 
-                        if (state === 1) { // Black
-                            ctx.fillStyle = '#000';
+                        if (state === 1) { // Black stone with gradient
+                            // Create radial gradient for black stone (dark to lighter)
+                            const gradient = ctx.createRadialGradient(
+                                centerX - radius * 0.3, centerY - radius * 0.3, 0, // Light source from top-left
+                                centerX, centerY, radius
+                            );
+                            gradient.addColorStop(0, '#444'); // Lighter highlight
+                            gradient.addColorStop(0.3, '#222'); // Mid tone
+                            gradient.addColorStop(1, '#000'); // Dark edge
+
+                            ctx.fillStyle = gradient;
                             ctx.fill();
-                        } else { // White
-                            ctx.fillStyle = '#FFF';
+                        } else { // White stone with gradient
+                            // Create radial gradient for white stone (bright to shadow)
+                            const gradient = ctx.createRadialGradient(
+                                centerX - radius * 0.3, centerY - radius * 0.3, 0, // Light source from top-left
+                                centerX, centerY, radius
+                            );
+                            gradient.addColorStop(0, '#FFF'); // Bright highlight
+                            gradient.addColorStop(0.7, '#F5F5F5'); // Slight shadow
+                            gradient.addColorStop(1, '#E0E0E0'); // Darker edge
+
+                            ctx.fillStyle = gradient;
                             ctx.fill();
                             ctx.strokeStyle = '#000';
                             ctx.lineWidth = Math.max(1, cellSize * 0.05); // Scale stroke width
