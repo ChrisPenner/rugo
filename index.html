@@ -312,6 +312,109 @@
             }
         }
 
+        /* Settings Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            min-width: 320px;
+            max-width: 90vw;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            padding: 4px;
+            min-height: auto;
+            min-width: auto;
+            border-radius: 4px;
+        }
+
+        .modal-close:hover {
+            background-color: #f5f5f5;
+            color: #333;
+            transform: none;
+        }
+
+        .settings-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .setting-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .setting-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .setting-item button {
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            min-height: 44px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .setting-item button:hover {
+            background-color: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .setting-item button:active {
+            transform: translateY(0);
+        }
+
         /* Extra small mobile devices */
         @media (max-width: 480px) {
             .container {
@@ -347,6 +450,16 @@
                 padding: 5px 6px;
                 font-size: 11px;
                 min-height: 28px;
+            }
+
+            .modal-content {
+                margin: 20px;
+                padding: 20px;
+                min-width: 280px;
+            }
+
+            .modal-title {
+                font-size: 18px;
             }
         }
 
@@ -488,16 +601,39 @@
                         <option value="13">13×13</option>
                         <option value="19" selected>19×19</option>
                     </select>
-                    <button id="copy-url-btn">Copy Game State</button>
+                    <button id="settings-btn">⚙️ Settings</button>
                 </div>
                 <div class="tertiary-button-row">
-                    <button id="sound-toggle-btn">🔊 Sound: ON</button>
-                    <button id="wake-lock-btn">💡 Prevent sleep: OFF</button>
                     <button id="edit-mode-btn">✏️ Edit Mode: OFF</button>
-                    <button id="screenshot-btn">📷 Screenshot</button>
+                    <button id="screenshot-btn">� Screenshot</button>
                 </div>
-                <div class="tertiary-button-row">
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Settings</h2>
+                <button class="modal-close" id="settings-close">&times;</button>
+            </div>
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <div class="setting-label">Audio</div>
+                    <button id="sound-toggle-btn">🔊 Sound: ON</button>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-label">Display</div>
+                    <button id="wake-lock-btn">� Prevent Sleep: OFF</button>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-label">Stones</div>
                     <button id="move-numbers-btn">🔢 Move Numbers: OFF</button>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-label">Share</div>
+                    <button id="copy-url-btn">📋 Copy Game State</button>
                 </div>
             </div>
         </div>
@@ -1970,6 +2106,37 @@
                 }
 
                 console.log('Move numbers:', showMoveNumbers ? 'ON' : 'OFF');
+            });
+
+            // Settings modal functionality
+            const settingsModal = document.getElementById('settings-modal');
+            const settingsBtn = document.getElementById('settings-btn');
+            const settingsClose = document.getElementById('settings-close');
+
+            // Open settings modal
+            settingsBtn.addEventListener('click', () => {
+                settingsModal.classList.add('show');
+            });
+
+            // Close settings modal
+            const closeSettings = () => {
+                settingsModal.classList.remove('show');
+            };
+
+            settingsClose.addEventListener('click', closeSettings);
+
+            // Close modal when clicking outside
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) {
+                    closeSettings();
+                }
+            });
+
+            // Close modal with Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && settingsModal.classList.contains('show')) {
+                    closeSettings();
+                }
             });
 
             // Handle window resize and orientation changes
