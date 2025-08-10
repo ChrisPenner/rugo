@@ -1819,10 +1819,17 @@
             const blackCaptures = game.get_black_captures();
             const whiteCaptures = game.get_white_captures();
 
-            // Calculate positioning
-            const statusY = boardTopY - 25; // Position above the board
+            // Calculate positioning - ensure status doesn't get clipped off top
             const fontSize = Math.max(12, cellSize * 0.3);
             const stoneRadius = Math.max(6, cellSize * 0.15);
+            const minTopMargin = 5; // Minimum margin from top of canvas
+            const idealOffset = 25; // Ideal distance above board
+
+            // Choose the position that keeps the status visible
+            const statusY = Math.max(
+                fontSize + minTopMargin, // Ensure text doesn't clip off top
+                boardTopY - idealOffset   // Ideal position above board
+            );
 
             ctx.font = `${fontSize}px Arial`;
             ctx.fillStyle = '#000';
