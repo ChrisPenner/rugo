@@ -554,7 +554,7 @@
             <!-- Secondary controls - less frequently used -->
             <div class="secondary-controls">
                 <div class="secondary-button-row">
-                    <button id="new-game-btn">New Game</button>
+                    <button id="new-game-btn">Clear Board</button>
                     <select id="board-size">
                         <option value="9">9×9</option>
                         <option value="13">13×13</option>
@@ -800,6 +800,47 @@
             editMode: 'confirm_edit_mode'
         };
 
+        // User preference storage keys
+        const userPrefs = {
+            soundEnabled: 'sound_enabled',
+            wakeLockEnabled: 'wake_lock_enabled',
+            preferredBoardSize: 'preferred_board_size'
+        };
+
+        // Function to save user preferences to localStorage
+        function saveUserPreference(key, value) {
+            try {
+                localStorage.setItem(key, value.toString());
+            } catch (error) {
+                console.warn('Failed to save preference:', error);
+            }
+        }
+
+        // Function to load user preferences from localStorage
+        function loadUserPreference(key, defaultValue) {
+            try {
+                const stored = localStorage.getItem(key);
+                if (stored === null) return defaultValue;
+
+                // Handle boolean values
+                if (defaultValue === true || defaultValue === false) {
+                    return stored === 'true';
+                }
+
+                // Handle numeric values
+                if (typeof defaultValue === 'number') {
+                    const parsed = parseInt(stored, 10);
+                    return isNaN(parsed) ? defaultValue : parsed;
+                }
+
+                // Handle string values
+                return stored;
+            } catch (error) {
+                console.warn('Failed to load preference:', error);
+                return defaultValue;
+            }
+        }
+
         // Utility function to show confirmation with "Don't notify me again" option
         function showConfirmationWithOptOut(message, prefKey) {
             // Check if user has opted out of this confirmation
@@ -1020,6 +1061,9 @@
                 // Initialize the wasm module
                 await init();
 
+                // Restore user preferences
+                restoreUserPreferences();
+
                 // Get selected board size
                 const boardSize = parseInt(document.getElementById('board-size').value);
 
@@ -1043,6 +1087,48 @@
 
             } catch (error) {
                 console.error('Failed to initialize game:', error);
+            }
+        }
+
+        // Function to restore all user preferences
+        function restoreUserPreferences() {
+            // Restore board size preference
+            const preferredBoardSize = loadUserPreference(userPrefs.preferredBoardSize, 19);
+            const boardSizeSelect = document.getElementById('board-size');
+            boardSizeSelect.value = preferredBoardSize.toString();
+
+            // Restore sound preference
+            const soundEnabled = loadUserPreference(userPrefs.soundEnabled, true);
+            soundSystem.enabled = soundEnabled;
+            const soundButton = document.getElementById('sound-toggle-btn');
+            soundButton.textContent = soundEnabled ? '🔊 Sound: ON' : '🔇 Sound: OFF';
+
+            // Restore wake lock preference
+            const wakeLockEnabled = loadUserPreference(userPrefs.wakeLockEnabled, false);
+            if (wakeLockEnabled && wakeLockSystem.isSupported()) {
+                // Try to enable wake lock on startup
+                wakeLockSystem.toggle().then(() => {
+                    updateWakeLockButton();
+                }).catch(() => {
+                    // If it fails, update button to show OFF state
+                    updateWakeLockButton();
+                });
+            } else {
+                updateWakeLockButton();
+            }
+        }
+
+        // Function to update wake lock button text
+        function updateWakeLockButton() {
+            const button = document.getElementById('wake-lock-btn');
+            if (!wakeLockSystem.isSupported()) {
+                button.textContent = '❌ Keep Screen On: Not Supported';
+                button.disabled = true;
+                button.hidden = true;
+            } else if (wakeLockSystem.isEnabled()) {
+                button.textContent = '💡 Prevent Sleep: ON';
+            } else {
+                button.textContent = '💡 Prevent Sleep: OFF';
             }
         }
 
@@ -1308,6 +1394,10 @@
                     return;
                 }
 
+                // Save the new board size preference
+                const newBoardSize = parseInt(event.target.value);
+                saveUserPreference(userPrefs.preferredBoardSize, newBoardSize);
+
                 // Clear URL state when user changes board size manually
                 const url = new URL(window.location);
                 url.searchParams.delete('state');
@@ -1431,6 +1521,9 @@
                 } else {
                     button.textContent = '🔇 Sound: OFF';
                 }
+
+                // Save sound preference
+                saveUserPreference(userPrefs.soundEnabled, enabled);
             });
 
             // Wake lock toggle button
@@ -1447,11 +1540,16 @@
 
                 try {
                     const enabled = await wakeLockSystem.toggle();
+
+                    // Update button text
+                    updateWakeLockButton();
+
+                    // Save wake lock preference
+                    saveUserPreference(userPrefs.wakeLockEnabled, enabled);
+
                     if (enabled) {
-                        button.textContent = '💡 Prevent Sleep: ON';
                         console.log('Screen will stay on while game is active');
                     } else {
-                        button.textContent = '💡 Prevent Sleep: OFF';
                         console.log('Screen can dim/sleep normally');
                     }
                 } catch (error) {
