@@ -323,52 +323,27 @@ impl GoGame {
     pub fn serialize_state(&self) -> String {
         let mut state_bytes = Vec::new();
 
-        // Add board size (1 byte)
-        state_bytes.push(self.board_size as u8);
-
-        // Add current player (1 byte: 0=empty, 1=black, 2=white)
-        let player_byte = match self.current_player {
-            StoneState::Empty => 0,
-            StoneState::Black => 1,
-            StoneState::White => 2,
+        // Pack board size (3 bits: 0=9, 1=13, 2=19) and current player (2 bits) into 1 byte
+        let board_size_code = match self.board_size {
+            9 => 0u8,
+            13 => 1u8,
+            19 => 2u8,
+            _ => 2u8, // Default to 19
         };
-        state_bytes.push(player_byte);
+        let player_code = match self.current_player {
+            StoneState::Empty => 0u8,
+            StoneState::Black => 1u8,
+            StoneState::White => 2u8,
+        };
+        let header_byte = (board_size_code << 2) | player_code;
+        state_bytes.push(header_byte);
 
-        // Add capture counts (4 bytes each, big-endian)
-        state_bytes.extend_from_slice(&self.black_captures.to_be_bytes());
-        state_bytes.extend_from_slice(&self.white_captures.to_be_bytes());
+        // Variable-length encoding for capture counts (saves space for small numbers)
+        encode_varint(&mut state_bytes, self.black_captures);
+        encode_varint(&mut state_bytes, self.white_captures);
 
-        // Add board state - use 2 bits per intersection
-        // Pack 4 intersections per byte to save space
-        let mut board_bytes = Vec::new();
-        let mut current_byte = 0u8;
-        let mut bits_used = 0;
-
-        for y in 0..self.board_size {
-            for x in 0..self.board_size {
-                let state_value = match self.board[y][x] {
-                    StoneState::Empty => 0u8,
-                    StoneState::Black => 1u8,
-                    StoneState::White => 2u8,
-                };
-
-                current_byte |= state_value << (6 - bits_used);
-                bits_used += 2;
-
-                if bits_used == 8 {
-                    board_bytes.push(current_byte);
-                    current_byte = 0;
-                    bits_used = 0;
-                }
-            }
-        }
-
-        // Add any remaining bits
-        if bits_used > 0 {
-            board_bytes.push(current_byte);
-        }
-
-        state_bytes.extend(board_bytes);
+        // Use run-length encoding for board state to handle empty regions efficiently
+        encode_board_rle(&mut state_bytes, &self.board, self.board_size);
 
         // Encode as base64
         base64_encode(&state_bytes)
@@ -377,97 +352,66 @@ impl GoGame {
     // Restore game state from a serialized string
     pub fn deserialize_state(&mut self, state_str: &str) -> bool {
         if let Some(state_bytes) = base64_decode(state_str) {
-            if state_bytes.len() < 10 {
-                return false; // Too short to be valid
+            if state_bytes.is_empty() {
+                return false;
             }
 
             let mut idx = 0;
 
-            // Read board size
-            let board_size = state_bytes[idx] as usize;
-            if board_size != 9 && board_size != 13 && board_size != 19 {
-                return false; // Invalid board size
-            }
+            // Decode header byte
+            let header_byte = state_bytes[idx];
             idx += 1;
 
-            // Read current player
-            let player_byte = state_bytes[idx];
-            let current_player = match player_byte {
+            let board_size_code = (header_byte >> 2) & 0b111;
+            let board_size = match board_size_code {
+                0 => 9,
+                1 => 13,
+                2 => 19,
+                _ => return false,
+            };
+
+            let player_code = header_byte & 0b11;
+            let current_player = match player_code {
                 0 => StoneState::Empty,
                 1 => StoneState::Black,
                 2 => StoneState::White,
                 _ => return false,
             };
-            idx += 1;
 
-            // Read capture counts
-            if idx + 8 > state_bytes.len() {
-                return false;
-            }
-            let black_captures = u32::from_be_bytes([
-                state_bytes[idx], state_bytes[idx + 1],
-                state_bytes[idx + 2], state_bytes[idx + 3]
-            ]);
-            idx += 4;
-            let white_captures = u32::from_be_bytes([
-                state_bytes[idx], state_bytes[idx + 1],
-                state_bytes[idx + 2], state_bytes[idx + 3]
-            ]);
-            idx += 4;
+            // Decode variable-length capture counts
+            if let Some((black_captures, new_idx)) = decode_varint(&state_bytes, idx) {
+                idx = new_idx;
+                if let Some((white_captures, new_idx)) = decode_varint(&state_bytes, idx) {
+                    idx = new_idx;
 
-            // Read board state
-            let total_intersections = board_size * board_size;
-            let expected_board_bytes = (total_intersections + 3) / 4; // Round up
+                    // Decode run-length encoded board
+                    if let Some(board) = decode_board_rle(&state_bytes, idx, board_size) {
+                        // Update game state
+                        self.board = board;
+                        self.board_size = board_size;
+                        self.current_player = current_player;
+                        self.black_captures = black_captures;
+                        self.white_captures = white_captures;
+                        self.last_move = None; // Clear last move when loading state
 
-            if idx + expected_board_bytes > state_bytes.len() {
-                return false;
-            }
+                        // Reset history to current state
+                        let new_state = GameState {
+                            board: self.board,
+                            current_player: self.current_player,
+                            black_captures: self.black_captures,
+                            white_captures: self.white_captures,
+                            last_move: self.last_move,
+                        };
+                        self.history = vec![new_state];
+                        self.history_index = 0;
 
-            // Clear current board
-            self.board = [[StoneState::Empty; MAX_BOARD_SIZE]; MAX_BOARD_SIZE];
-
-            let mut intersection_idx = 0;
-            for &byte in &state_bytes[idx..idx + expected_board_bytes] {
-                for bit_pos in (0..8).step_by(2).rev() {
-                    if intersection_idx >= total_intersections {
-                        break;
+                        console_log!("Successfully deserialized game state");
+                        return true;
                     }
-
-                    let state_value = (byte >> bit_pos) & 0b11;
-                    let state = match state_value {
-                        0 => StoneState::Empty,
-                        1 => StoneState::Black,
-                        2 => StoneState::White,
-                        _ => StoneState::Empty, // Invalid, treat as empty
-                    };
-
-                    let y = intersection_idx / board_size;
-                    let x = intersection_idx % board_size;
-                    self.board[y][x] = state;
-                    intersection_idx += 1;
                 }
             }
 
-            // Update game state
-            self.board_size = board_size;
-            self.current_player = current_player;
-            self.black_captures = black_captures;
-            self.white_captures = white_captures;
-            self.last_move = None; // Clear last move when loading state
-
-            // Reset history to current state
-            let new_state = GameState {
-                board: self.board,
-                current_player: self.current_player,
-                black_captures: self.black_captures,
-                white_captures: self.white_captures,
-                last_move: self.last_move,
-            };
-            self.history = vec![new_state];
-            self.history_index = 0;
-
-            console_log!("Successfully deserialized game state");
-            true
+            false
         } else {
             false
         }
@@ -625,6 +569,120 @@ impl GoGame {
         }
 
         false
+    }
+}
+
+// Variable-length integer encoding (LEB128-style)
+// Uses 7 bits per byte for data, 1 bit to indicate continuation
+fn encode_varint(bytes: &mut Vec<u8>, mut value: u32) {
+    while value >= 0x80 {
+        bytes.push((value & 0x7F) as u8 | 0x80);
+        value >>= 7;
+    }
+    bytes.push(value as u8);
+}
+
+fn decode_varint(bytes: &[u8], mut idx: usize) -> Option<(u32, usize)> {
+    let mut result = 0u32;
+    let mut shift = 0;
+
+    while idx < bytes.len() {
+        let byte = bytes[idx];
+        idx += 1;
+
+        result |= ((byte & 0x7F) as u32) << shift;
+
+        if byte & 0x80 == 0 {
+            return Some((result, idx));
+        }
+
+        shift += 7;
+        if shift >= 32 {
+            return None; // Overflow
+        }
+    }
+
+    None // Incomplete varint
+}
+
+// Run-length encoding for board state
+// Format: [count][state] where count uses 6 bits (max 63), state uses 2 bits
+// If count >= 63, use multiple runs
+fn encode_board_rle(bytes: &mut Vec<u8>, board: &[[StoneState; MAX_BOARD_SIZE]; MAX_BOARD_SIZE], board_size: usize) {
+    let mut current_state = board[0][0];
+    let mut run_length = 1u8;
+
+    for y in 0..board_size {
+        for x in 0..board_size {
+            if y == 0 && x == 0 {
+                continue; // Already processed first position
+            }
+
+            let state = board[y][x];
+
+            if state == current_state && run_length < 63 {
+                run_length += 1;
+            } else {
+                // Encode current run
+                let state_code = match current_state {
+                    StoneState::Empty => 0u8,
+                    StoneState::Black => 1u8,
+                    StoneState::White => 2u8,
+                };
+                bytes.push((run_length << 2) | state_code);
+
+                // Start new run
+                current_state = state;
+                run_length = 1;
+            }
+        }
+    }
+
+    // Encode final run
+    let state_code = match current_state {
+        StoneState::Empty => 0u8,
+        StoneState::Black => 1u8,
+        StoneState::White => 2u8,
+    };
+    bytes.push((run_length << 2) | state_code);
+}
+
+fn decode_board_rle(bytes: &[u8], mut idx: usize, board_size: usize) -> Option<[[StoneState; MAX_BOARD_SIZE]; MAX_BOARD_SIZE]> {
+    let mut board = [[StoneState::Empty; MAX_BOARD_SIZE]; MAX_BOARD_SIZE];
+    let total_intersections = board_size * board_size;
+    let mut position = 0;
+
+    while idx < bytes.len() && position < total_intersections {
+        let encoded = bytes[idx];
+        idx += 1;
+
+        let run_length = (encoded >> 2) as usize;
+        let state_code = encoded & 0b11;
+
+        let state = match state_code {
+            0 => StoneState::Empty,
+            1 => StoneState::Black,
+            2 => StoneState::White,
+            _ => return None,
+        };
+
+        // Fill the run
+        for _ in 0..run_length {
+            if position >= total_intersections {
+                break;
+            }
+
+            let y = position / board_size;
+            let x = position % board_size;
+            board[y][x] = state;
+            position += 1;
+        }
+    }
+
+    if position == total_intersections {
+        Some(board)
+    } else {
+        None
     }
 }
 
