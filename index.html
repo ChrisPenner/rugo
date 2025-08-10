@@ -415,6 +415,29 @@
             transform: translateY(0);
         }
 
+        .board-size-option {
+            padding: 12px 16px !important;
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            min-height: 48px !important;
+            background-color: #4CAF50 !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 6px !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+        }
+
+        .board-size-option:hover {
+            background-color: #45a049 !important;
+            transform: translateY(-1px) !important;
+        }
+
+        .board-size-option:active {
+            transform: translateY(0) !important;
+            background-color: #3d8b40 !important;
+        }
+
         /* Extra small mobile devices */
         @media (max-width: 480px) {
             .container {
@@ -595,12 +618,7 @@
             <!-- Secondary controls - less frequently used -->
             <div class="secondary-controls">
                 <div class="secondary-button-row">
-                    <button id="new-game-btn">Clear Board</button>
-                    <select id="board-size">
-                        <option value="9">9×9</option>
-                        <option value="13">13×13</option>
-                        <option value="19" selected>19×19</option>
-                    </select>
+                    <button id="new-game-btn">New Game</button>
                     <button id="settings-btn">⚙️ Settings</button>
                 </div>
                 <div class="tertiary-button-row">
@@ -634,6 +652,32 @@
                 <div class="setting-item">
                     <div class="setting-label">Share</div>
                     <button id="copy-url-btn">📋 Copy Game State</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Game Modal -->
+    <div id="new-game-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Start New Game</h2>
+                <button class="modal-close" id="new-game-close">&times;</button>
+            </div>
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <div class="setting-label">⚠️ Warning</div>
+                    <p style="color: #d73527; font-size: 14px; margin: 0; line-height: 1.4;">
+                        Starting a new game will lose your current progress and cannot be undone.
+                    </p>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-label">Choose Board Size</div>
+                    <div style="display: grid; gap: 8px;">
+                        <button id="new-game-9x9" class="board-size-option">9×9 Board</button>
+                        <button id="new-game-13x13" class="board-size-option">13×13 Board</button>
+                        <button id="new-game-19x19" class="board-size-option">19×19 Board</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -931,9 +975,6 @@
                 if (state && game) {
                     if (game.deserialize_state(state)) {
                         console.log('Game state restored from localStorage');
-                        // Update board size selector to match loaded state
-                        const boardSize = game.get_board_size();
-                        document.getElementById('board-size').value = boardSize.toString();
                         return true;
                     } else {
                         console.warn('Failed to deserialize game state from localStorage');
@@ -1168,8 +1209,8 @@
                 // Restore user preferences
                 restoreUserPreferences();
 
-                // Get selected board size
-                const boardSize = parseInt(document.getElementById('board-size').value);
+                // Get preferred board size from user preferences
+                const boardSize = loadUserPreference(userPrefs.preferredBoardSize, 19);
 
                 // Set up responsive canvas sizing
                 setupResponsiveCanvas();
@@ -1201,11 +1242,6 @@
 
         // Function to restore all user preferences
         function restoreUserPreferences() {
-            // Restore board size preference
-            const preferredBoardSize = loadUserPreference(userPrefs.preferredBoardSize, 19);
-            const boardSizeSelect = document.getElementById('board-size');
-            boardSizeSelect.value = preferredBoardSize.toString();
-
             // Restore sound preference
             const soundEnabled = loadUserPreference(userPrefs.soundEnabled, true);
             soundSystem.enabled = soundEnabled;
@@ -1647,46 +1683,32 @@
                 event.preventDefault();
             });
 
-            // Board size selector
-            document.getElementById('board-size').addEventListener('change', async (event) => {
-                // Ask for confirmation before changing board size (which resets the game)
-                const confirmed = await showConfirmationWithOptOut(
-                    'Changing the board size will start a new game and lose your current progress. Continue?',
-                    confirmationPrefs.boardSizeChange
-                );
-                if (!confirmed) {
-                    // Revert the selection to the current board size
-                    const currentBoardSize = game ? game.get_board_size() : 19;
-                    event.target.value = currentBoardSize.toString();
-                    return;
-                }
-
-                // Save the new board size preference
-                const newBoardSize = parseInt(event.target.value);
-                saveUserPreference(userPrefs.preferredBoardSize, newBoardSize);
-
-                // Clear URL state when user changes board size manually
-                const url = new URL(window.location);
-                url.searchParams.delete('state');
-                window.history.replaceState(null, '', url);
-
-                // Clear localStorage game state when changing board size
-                localStorage.removeItem(userPrefs.lastGameState);
-
-                initGame(); // Start new game with selected size
+            // New game button - open modal for board size selection
+            document.getElementById('new-game-btn').addEventListener('click', () => {
+                const newGameModal = document.getElementById('new-game-modal');
+                newGameModal.classList.add('show');
             });
 
-            // New game button
-            document.getElementById('new-game-btn').addEventListener('click', async () => {
-                // Ask for confirmation before starting a new game
-                const confirmed = await showConfirmationWithOptOut(
-                    'Start a new game? This will lose your current progress.',
-                    confirmationPrefs.newGame
-                );
-                if (!confirmed) {
-                    return;
-                }
+            // New game modal functionality
+            const newGameModal = document.getElementById('new-game-modal');
+            const newGameClose = document.getElementById('new-game-close');
 
+            // Close new game modal
+            const closeNewGame = () => {
+                newGameModal.classList.remove('show');
+            };
+
+            newGameClose.addEventListener('click', closeNewGame);
+
+            // Close modal when clicking outside
+            newGameModal.addEventListener('click', (e) => {
+                if (e.target === newGameModal) {
+                    closeNewGame();
+                }
+            });
+
+            // Board size selection handlers
+            const startNewGame = (boardSize) => {
                 // Clear URL state for fresh game
                 const url = new URL(window.location);
                 url.searchParams.delete('state');
@@ -1695,9 +1717,21 @@
                 // Clear localStorage game state for fresh game
                 localStorage.removeItem(userPrefs.lastGameState);
 
-                // Start fresh game
-                initGame();
-            });
+                // Save the new board size preference
+                saveUserPreference(userPrefs.preferredBoardSize, boardSize);
+
+                // Close modal
+                closeNewGame();
+
+                // Create a new game with the selected size
+                game = GoGame.new_with_size(canvas, boardSize);
+                setupResponsiveCanvas();
+                drawBoard();
+                updateUndoRedoButtons();
+                updateUrl();
+            }; document.getElementById('new-game-9x9').addEventListener('click', () => startNewGame(9));
+            document.getElementById('new-game-13x13').addEventListener('click', () => startNewGame(13));
+            document.getElementById('new-game-19x19').addEventListener('click', () => startNewGame(19));
 
             // Undo button
             document.getElementById('undo-btn').addEventListener('click', () => {
@@ -2134,8 +2168,13 @@
 
             // Close modal with Escape key
             document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && settingsModal.classList.contains('show')) {
-                    closeSettings();
+                if (e.key === 'Escape') {
+                    if (settingsModal.classList.contains('show')) {
+                        closeSettings();
+                    }
+                    if (newGameModal.classList.contains('show')) {
+                        closeNewGame();
+                    }
                 }
             });
 
@@ -2202,9 +2241,6 @@
                 try {
                     if (game.deserialize_state(stateParam)) {
                         console.log('Successfully loaded state from URL');
-                        // Update board size selector to match loaded state
-                        const boardSize = game.get_board_size();
-                        document.getElementById('board-size').value = boardSize.toString();
                         return true;
                     } else {
                         console.warn('Failed to deserialize state from URL');
