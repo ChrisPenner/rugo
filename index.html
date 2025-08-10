@@ -33,15 +33,6 @@
             gap: 5px;
         }
 
-        h1 {
-            color: #333;
-            margin: 0;
-            font-size: clamp(1.2rem, 3vw, 1.8rem);
-            text-align: center;
-            flex-shrink: 0;
-            padding: 5px 0;
-        }
-
         /* Main game area - takes most of the space */
         .game-area {
             flex: 1;
@@ -77,6 +68,38 @@
             -moz-user-select: none;
             -ms-user-select: none;
             user-select: none;
+        }
+
+        /* Compact game status under the board */
+        .game-status {
+            margin-top: 8px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .game-status #current-player {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 4px 0;
+            color: #2d3748;
+        }
+
+        .game-status #score-display {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 4px;
+            flex-wrap: wrap;
+        }
+
+        .game-status #score-display div {
+            background-color: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 12px;
+            min-width: 100px;
+            text-align: center;
         }
 
         .controls {
@@ -290,11 +313,6 @@
                 gap: 3px;
             }
 
-            h1 {
-                font-size: clamp(1rem, 2.5vw, 1.4rem);
-                padding: 3px 0;
-            }
-
             .canvas-container {
                 max-width: min(92vmin, 95vw);
                 max-height: min(92vmin, 95vw);
@@ -347,11 +365,6 @@
                 gap: 2px;
             }
 
-            h1 {
-                font-size: clamp(0.9rem, 2vw, 1.2rem);
-                padding: 2px 0;
-            }
-
             .primary-controls {
                 gap: 4px;
             }
@@ -397,20 +410,10 @@
                 gap: 16px;
             }
 
-            h1 {
-                position: absolute;
-                top: 8px;
-                left: 50%;
-                transform: translateX(-50%);
-                margin: 0;
-                font-size: 1.5rem;
-                z-index: 10;
-            }
-
             .game-area {
                 flex: 1;
-                margin-top: 40px;
                 display: flex;
+                flex-direction: column;
                 align-items: center;
                 justify-content: center;
             }
@@ -502,31 +505,25 @@
                 gap: 8px;
             }
 
-            h1 {
-                position: absolute;
-                top: 3px;
-                left: 50%;
-                transform: translateX(-50%);
-                margin: 0;
-                font-size: 1rem;
-                z-index: 10;
-            }
-
             .game-area {
                 flex: 1;
-                margin-top: 25px;
             }
 
             .controls {
                 flex-shrink: 0;
                 width: 200px;
                 max-height: none;
-                margin-top: 25px;
+                margin-top: 8px;
             }
 
             .status {
                 display: none;
                 /* Hide status in mobile landscape to save space */
+            }
+
+            .game-status {
+                display: none;
+                /* Hide game status in mobile landscape to save space */
             }
         }
     </style>
@@ -534,10 +531,17 @@
 
 <body>
     <div class="container">
-        <h1>Go</h1>
         <div class="game-area">
             <div class="canvas-container">
                 <canvas id="game-canvas" width="600" height="600"></canvas>
+            </div>
+            <!-- Compact game status directly under the board -->
+            <div class="game-status">
+                <div id="current-player">Current Player: Black</div>
+                <div id="score-display">
+                    <div>Black Captures: <span id="black-score">0</span></div>
+                    <div>White Captures: <span id="white-score">0</span></div>
+                </div>
             </div>
         </div>
 
@@ -566,14 +570,9 @@
                 </div>
             </div>
 
-            <!-- Status display -->
+            <!-- Status display for messages only -->
             <div class="status">
                 <div id="status-text" class="info">Loading...</div>
-                <div id="current-player">Current Player: Black</div>
-                <div id="score-display">
-                    <div>Black Captures: <span id="black-score">0</span></div>
-                    <div>White Captures: <span id="white-score">0</span></div>
-                </div>
             </div>
         </div>
     </div>
