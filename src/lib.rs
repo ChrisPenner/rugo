@@ -24,16 +24,12 @@ pub enum StoneState {
     White,
 }
 
-// Game history for undo/redo
+// Move representation for sequence encoding
 #[derive(Clone, Debug)]
-struct GameState {
-    board: [[StoneState; MAX_BOARD_SIZE]; MAX_BOARD_SIZE],
-    move_numbers: [[u32; MAX_BOARD_SIZE]; MAX_BOARD_SIZE], // Track move number for each position (0 = no move)
-    current_player: StoneState,
-    black_captures: u32,
-    white_captures: u32,
-    last_move: Option<(usize, usize)>, // Track the last move position
-    move_count: u32, // Total number of moves made
+struct Move {
+    x: Option<usize>, // None for pass moves
+    y: Option<usize>, // None for pass moves
+    player: StoneState,
 }
 
 // Simple Go game struct without WebGPU for now
@@ -45,12 +41,11 @@ pub struct GoGame {
     current_player: StoneState,
     canvas_width: u32,
     canvas_height: u32,
-    history: Vec<GameState>,
-    history_index: usize,
+    move_sequence: Vec<Move>, // Chronological sequence of moves - replaces history
+    move_index: usize, // Current position in move sequence (for undo/redo)
     black_captures: u32,
     white_captures: u32,
     last_move: Option<(usize, usize)>, // Track the last move position
-    move_count: u32, // Total number of moves made
 }
 
 #[wasm_bindgen]
@@ -76,15 +71,6 @@ impl GoGame {
 
         let initial_board = [[StoneState::Empty; MAX_BOARD_SIZE]; MAX_BOARD_SIZE];
         let initial_move_numbers = [[0u32; MAX_BOARD_SIZE]; MAX_BOARD_SIZE];
-        let initial_state = GameState {
-            board: initial_board,
-            move_numbers: initial_move_numbers,
-            current_player: StoneState::Black,
-            black_captures: 0,
-            white_captures: 0,
-            last_move: None,
-            move_count: 0,
-        };
 
         GoGame {
             board: initial_board,
@@ -93,12 +79,11 @@ impl GoGame {
             current_player: StoneState::Black,
             canvas_width: canvas.width(),
             canvas_height: canvas.height(),
-            history: vec![initial_state],
-            history_index: 0,
+            move_sequence: Vec::new(),
+            move_index: 0,
             black_captures: 0,
             white_captures: 0,
             last_move: None,
-            move_count: 0,
         }
     }
 
@@ -130,6 +115,75 @@ impl GoGame {
             return 0;
         }
         self.move_numbers[y][x]
+    }
+
+    // Reconstruct game state from move sequence up to move_index
+    fn reconstruct_state_to_index(&mut self, target_index: usize) {
+        // Reset to initial state
+        self.board = [[StoneState::Empty; MAX_BOARD_SIZE]; MAX_BOARD_SIZE];
+        self.move_numbers = [[0u32; MAX_BOARD_SIZE]; MAX_BOARD_SIZE];
+        self.current_player = StoneState::Black;
+        self.black_captures = 0;
+        self.white_captures = 0;
+        self.last_move = None;
+
+        // Replay moves up to target_index
+        for (i, mv) in self.move_sequence.iter().enumerate().take(target_index) {
+            match (mv.x, mv.y) {
+                (Some(x), Some(y)) => {
+                    // Stone placement move
+                    self.board[y][x] = mv.player;
+                    self.move_numbers[y][x] = (i + 1) as u32;
+                    self.last_move = Some((x, y));
+
+                    // Handle captures
+                    let opponent = match mv.player {
+                        StoneState::Black => StoneState::White,
+                        StoneState::White => StoneState::Black,
+                        StoneState::Empty => StoneState::Empty,
+                    };
+
+                    let adjacent_positions = [
+                        (x.wrapping_sub(1), y), // Left
+                        (x + 1, y),             // Right
+                        (x, y.wrapping_sub(1)), // Up
+                        (x, y + 1),             // Down
+                    ];
+
+                    let mut total_captured = 0;
+                    for (adj_x, adj_y) in adjacent_positions {
+                        if adj_x < self.board_size && adj_y < self.board_size {
+                            if self.board[adj_y][adj_x] == opponent {
+                                let captured = self.capture_group_if_no_liberties(adj_x, adj_y, opponent);
+                                total_captured += captured;
+                            }
+                        }
+                    }
+
+                    // Update capture count
+                    match mv.player {
+                        StoneState::Black => self.black_captures += total_captured,
+                        StoneState::White => self.white_captures += total_captured,
+                        StoneState::Empty => {},
+                    }
+                }
+                (None, None) => {
+                    // Pass move
+                    self.last_move = None;
+                }
+                (None, Some(_)) | (Some(_), None) => {
+                    // Invalid move data - this should never happen in a properly constructed move sequence
+                    console_log!("Warning: Invalid move data encountered during state reconstruction");
+                }
+            }
+
+            // Update current player for next move
+            self.current_player = match mv.player {
+                StoneState::Black => StoneState::White,
+                StoneState::White => StoneState::Black,
+                StoneState::Empty => StoneState::Black,
+            };
+        }
     }
 
     pub fn handle_click(&mut self, x: f32, y: f32) {
@@ -175,17 +229,24 @@ impl GoGame {
             return "Invalid move: Cannot place stone that would be immediately captured (suicide rule)".to_string();
         }
 
-        // Remove any future history if we're not at the end
-        if self.history_index < self.history.len() - 1 {
-            self.history.truncate(self.history_index + 1);
+        // Remove any future moves if we're not at the end (truncate for new branch)
+        if self.move_index < self.move_sequence.len() {
+            self.move_sequence.truncate(self.move_index);
         }
+
+        // Add move to sequence
+        self.move_sequence.push(Move {
+            x: Some(board_x),
+            y: Some(board_y),
+            player: placed_stone,
+        });
+        self.move_index += 1;
 
         // Place the stone
         self.board[board_y][board_x] = placed_stone;
 
-        // Increment move count and assign move number to this position
-        self.move_count += 1;
-        self.move_numbers[board_y][board_x] = self.move_count;
+        // Assign move number to this position
+        self.move_numbers[board_y][board_x] = self.move_index as u32;
 
         // Update last move position
         self.last_move = Some((board_x, board_y));
@@ -226,35 +287,15 @@ impl GoGame {
             StoneState::Empty => StoneState::Black,
         };
 
-        // Save the new state after the move is complete
-        let new_state = GameState {
-            board: self.board,
-            move_numbers: self.move_numbers,
-            current_player: self.current_player,
-            black_captures: self.black_captures,
-            white_captures: self.white_captures,
-            last_move: self.last_move,
-            move_count: self.move_count,
-        };
-        self.history.push(new_state);
-        self.history_index = self.history.len() - 1;
-
-        console_log!("Placed stone at ({}, {}), history index: {}", board_x, board_y, self.history_index);
+        console_log!("Placed stone at ({}, {}), move index: {}", board_x, board_y, self.move_index);
         "Move successful".to_string()
     }
 
     pub fn undo(&mut self) -> bool {
         if self.can_undo() {
-            self.history_index -= 1;
-            let state = &self.history[self.history_index];
-            self.board = state.board;
-            self.move_numbers = state.move_numbers;
-            self.current_player = state.current_player;
-            self.black_captures = state.black_captures;
-            self.white_captures = state.white_captures;
-            self.last_move = state.last_move;
-            self.move_count = state.move_count;
-            console_log!("Undo: moved to state {}", self.history_index);
+            self.move_index -= 1;
+            self.reconstruct_state_to_index(self.move_index);
+            console_log!("Undo: moved to move index {}", self.move_index);
             true
         } else {
             false
@@ -263,16 +304,9 @@ impl GoGame {
 
     pub fn redo(&mut self) -> bool {
         if self.can_redo() {
-            self.history_index += 1;
-            let state = &self.history[self.history_index];
-            self.board = state.board;
-            self.move_numbers = state.move_numbers;
-            self.current_player = state.current_player;
-            self.black_captures = state.black_captures;
-            self.white_captures = state.white_captures;
-            self.last_move = state.last_move;
-            self.move_count = state.move_count;
-            console_log!("Redo: moved to state {}", self.history_index);
+            self.move_index += 1;
+            self.reconstruct_state_to_index(self.move_index);
+            console_log!("Redo: moved to move index {}", self.move_index);
             true
         } else {
             false
@@ -280,11 +314,11 @@ impl GoGame {
     }
 
     pub fn can_undo(&self) -> bool {
-        self.history_index > 0
+        self.move_index > 0
     }
 
     pub fn can_redo(&self) -> bool {
-        self.history_index < self.history.len() - 1
+        self.move_index < self.move_sequence.len()
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -316,10 +350,18 @@ impl GoGame {
             StoneState::Empty => "Empty",
         });
 
-        // Remove any future history if we're not at the end
-        if self.history_index < self.history.len() - 1 {
-            self.history.truncate(self.history_index + 1);
+        // Remove any future moves if we're not at the end (truncate for new branch)
+        if self.move_index < self.move_sequence.len() {
+            self.move_sequence.truncate(self.move_index);
         }
+
+        // Add pass move to sequence
+        self.move_sequence.push(Move {
+            x: None,
+            y: None,
+            player: self.current_player,
+        });
+        self.move_index += 1;
 
         // Switch players
         self.current_player = match self.current_player {
@@ -330,19 +372,6 @@ impl GoGame {
 
         // Clear last move since this was a pass
         self.last_move = None;
-
-        // Save the new state after the pass
-        let new_state = GameState {
-            board: self.board,
-            move_numbers: self.move_numbers,
-            current_player: self.current_player,
-            black_captures: self.black_captures,
-            white_captures: self.white_captures,
-            last_move: self.last_move,
-            move_count: self.move_count,
-        };
-        self.history.push(new_state);
-        self.history_index = self.history.len() - 1;
 
         "Pass successful".to_string()
     }
@@ -370,8 +399,30 @@ impl GoGame {
         encode_varint(&mut state_bytes, self.black_captures);
         encode_varint(&mut state_bytes, self.white_captures);
 
-        // Use run-length encoding for board state to handle empty regions efficiently
-        encode_board_rle(&mut state_bytes, &self.board, self.board_size);
+        // Encode move sequence up to current move_index
+        encode_varint(&mut state_bytes, self.move_index as u32);
+        for mv in self.move_sequence.iter().take(self.move_index) {
+            match (mv.x, mv.y) {
+                (Some(x), Some(y)) => {
+                    // Stone placement: encode position (9 bits for 19x19) + player (2 bits)
+                    let position = (y * self.board_size + x) as u16;
+                    let player_bits = match mv.player {
+                        StoneState::Black => 1u16,
+                        StoneState::White => 2u16,
+                        StoneState::Empty => 0u16,
+                    };
+                    let encoded = (position << 2) | player_bits;
+                    // Store as 2 bytes (little endian)
+                    state_bytes.push(encoded as u8);
+                    state_bytes.push((encoded >> 8) as u8);
+                }
+                (None, None) => {
+                    // Pass move: use special encoding 0xFFFF
+                    state_bytes.push(0xFF);
+                    state_bytes.push(0xFF);
+                }
+            }
+        }
 
         // Encode as base64
         base64_encode(&state_bytes)
@@ -399,45 +450,80 @@ impl GoGame {
             };
 
             let player_code = header_byte & 0b11;
-            let current_player = match player_code {
+            let _current_player = match player_code {
                 0 => StoneState::Empty,
                 1 => StoneState::Black,
                 2 => StoneState::White,
                 _ => return false,
             };
 
-            // Decode variable-length capture counts
-            if let Some((black_captures, new_idx)) = decode_varint(&state_bytes, idx) {
+            // Decode variable-length capture counts (for validation)
+            if let Some((_black_captures, new_idx)) = decode_varint(&state_bytes, idx) {
                 idx = new_idx;
-                if let Some((white_captures, new_idx)) = decode_varint(&state_bytes, idx) {
+                if let Some((_white_captures, new_idx)) = decode_varint(&state_bytes, idx) {
                     idx = new_idx;
 
-                    // Decode run-length encoded board
-                    if let Some(board) = decode_board_rle(&state_bytes, idx, board_size) {
+                    // Decode move count
+                    if let Some((move_count, new_idx)) = decode_varint(&state_bytes, idx) {
+                        idx = new_idx;
+
+                        // Decode move sequence
+                        let mut move_sequence = Vec::new();
+                        for _ in 0..move_count {
+                            if idx + 1 >= state_bytes.len() {
+                                return false;
+                            }
+
+                            let encoded = state_bytes[idx] as u16 | ((state_bytes[idx + 1] as u16) << 8);
+                            idx += 2;
+
+                            if encoded == 0xFFFF {
+                                // Pass move
+                                // Player alternates: Black starts, so odd moves are Black, even are White
+                                let player = if move_sequence.len() % 2 == 0 {
+                                    StoneState::Black
+                                } else {
+                                    StoneState::White
+                                };
+                                move_sequence.push(Move {
+                                    x: None,
+                                    y: None,
+                                    player,
+                                });
+                            } else {
+                                // Stone placement
+                                let position = (encoded >> 2) as usize;
+                                let player_bits = encoded & 0b11;
+                                let player = match player_bits {
+                                    1 => StoneState::Black,
+                                    2 => StoneState::White,
+                                    _ => return false,
+                                };
+
+                                let x = position % board_size;
+                                let y = position / board_size;
+
+                                if x >= board_size || y >= board_size {
+                                    return false;
+                                }
+
+                                move_sequence.push(Move {
+                                    x: Some(x),
+                                    y: Some(y),
+                                    player,
+                                });
+                            }
+                        }
+
                         // Update game state
-                        self.board = board;
-                        self.move_numbers = [[0u32; MAX_BOARD_SIZE]; MAX_BOARD_SIZE]; // Reset move numbers when loading
                         self.board_size = board_size;
-                        self.current_player = current_player;
-                        self.black_captures = black_captures;
-                        self.white_captures = white_captures;
-                        self.last_move = None; // Clear last move when loading state
-                        self.move_count = 0; // Reset move count when loading
+                        self.move_sequence = move_sequence;
+                        self.move_index = move_count as usize;
 
-                        // Reset history to current state
-                        let new_state = GameState {
-                            board: self.board,
-                            move_numbers: self.move_numbers,
-                            current_player: self.current_player,
-                            black_captures: self.black_captures,
-                            white_captures: self.white_captures,
-                            last_move: self.last_move,
-                            move_count: self.move_count,
-                        };
-                        self.history = vec![new_state];
-                        self.history_index = 0;
+                        // Reconstruct the current game state
+                        self.reconstruct_state_to_index(self.move_index);
 
-                        console_log!("Successfully deserialized game state");
+                        console_log!("Successfully deserialized game state with {} moves", move_count);
                         return true;
                     }
                 }
@@ -671,87 +757,6 @@ fn decode_varint(bytes: &[u8], mut idx: usize) -> Option<(u32, usize)> {
     }
 
     None // Incomplete varint
-}
-
-// Run-length encoding for board state
-// Format: [count][state] where count uses 6 bits (max 63), state uses 2 bits
-// If count >= 63, use multiple runs
-fn encode_board_rle(bytes: &mut Vec<u8>, board: &[[StoneState; MAX_BOARD_SIZE]; MAX_BOARD_SIZE], board_size: usize) {
-    let mut current_state = board[0][0];
-    let mut run_length = 1u8;
-
-    for y in 0..board_size {
-        for x in 0..board_size {
-            if y == 0 && x == 0 {
-                continue; // Already processed first position
-            }
-
-            let state = board[y][x];
-
-            if state == current_state && run_length < 63 {
-                run_length += 1;
-            } else {
-                // Encode current run
-                let state_code = match current_state {
-                    StoneState::Empty => 0u8,
-                    StoneState::Black => 1u8,
-                    StoneState::White => 2u8,
-                };
-                bytes.push((run_length << 2) | state_code);
-
-                // Start new run
-                current_state = state;
-                run_length = 1;
-            }
-        }
-    }
-
-    // Encode final run
-    let state_code = match current_state {
-        StoneState::Empty => 0u8,
-        StoneState::Black => 1u8,
-        StoneState::White => 2u8,
-    };
-    bytes.push((run_length << 2) | state_code);
-}
-
-fn decode_board_rle(bytes: &[u8], mut idx: usize, board_size: usize) -> Option<[[StoneState; MAX_BOARD_SIZE]; MAX_BOARD_SIZE]> {
-    let mut board = [[StoneState::Empty; MAX_BOARD_SIZE]; MAX_BOARD_SIZE];
-    let total_intersections = board_size * board_size;
-    let mut position = 0;
-
-    while idx < bytes.len() && position < total_intersections {
-        let encoded = bytes[idx];
-        idx += 1;
-
-        let run_length = (encoded >> 2) as usize;
-        let state_code = encoded & 0b11;
-
-        let state = match state_code {
-            0 => StoneState::Empty,
-            1 => StoneState::Black,
-            2 => StoneState::White,
-            _ => return None,
-        };
-
-        // Fill the run
-        for _ in 0..run_length {
-            if position >= total_intersections {
-                break;
-            }
-
-            let y = position / board_size;
-            let x = position % board_size;
-            board[y][x] = state;
-            position += 1;
-        }
-    }
-
-    if position == total_intersections {
-        Some(board)
-    } else {
-        None
-    }
 }
 
 // Simple base64 encoding using web-safe characters
