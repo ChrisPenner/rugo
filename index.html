@@ -13,10 +13,11 @@
 
         body {
             margin: 0;
-            padding: 10px;
+            padding: 0;
             background-color: #f5f5f5;
             font-family: Arial, sans-serif;
-            min-height: 100vh;
+            height: 100vh;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
             /* Prevent zoom on double tap in iOS */
@@ -26,25 +27,39 @@
         .container {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            max-width: 100vw;
-            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            padding: 5px;
+            gap: 5px;
         }
 
         h1 {
             color: #333;
-            margin: 10px 0 20px 0;
-            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            margin: 0;
+            font-size: clamp(1.2rem, 3vw, 1.8rem);
             text-align: center;
+            flex-shrink: 0;
+            padding: 5px 0;
+        }
+
+        /* Main game area - takes most of the space */
+        .game-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+            /* Important for flex sizing */
         }
 
         /* Responsive canvas container */
         .canvas-container {
             position: relative;
             width: 100%;
-            max-width: min(90vw, 90vh, 600px);
+            height: 100%;
+            max-width: min(95vmin, 90vw);
+            max-height: min(95vmin, 90vw);
             aspect-ratio: 1;
-            margin: 0 auto;
         }
 
         #game-canvas {
@@ -54,6 +69,7 @@
             width: 100%;
             height: 100%;
             display: block;
+            margin: auto;
             /* Prevent canvas selection on mobile */
             -webkit-touch-callout: none;
             -webkit-user-select: none;
@@ -64,71 +80,69 @@
         }
 
         .controls {
-            margin-top: 20px;
+            flex-shrink: 0;
             width: 100%;
-            max-width: 500px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            padding: 0 10px;
+            gap: 8px;
+            padding: 5px;
+            max-height: 25vh;
         }
 
         .board-size-controls {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
         }
 
         .board-size-controls label {
-            font-weight: bold;
-            font-size: 16px;
+            font-weight: 500;
+            font-size: 12px;
+            color: #666;
         }
 
         .board-size-controls select {
-            padding: 12px 15px;
-            font-size: 16px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
             background-color: white;
-            min-width: 120px;
-            /* Improve touch targets on mobile */
-            min-height: 44px;
+            min-width: 80px;
+            min-height: 32px;
         }
 
         /* Primary button controls container - for most used actions */
         .primary-controls {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
+            gap: 8px;
             width: 100%;
-            margin-bottom: 10px;
         }
 
         .primary-controls button {
-            padding: 18px 24px;
-            font-size: 18px;
+            padding: 12px 16px;
+            font-size: 16px;
             font-weight: 700;
-            min-height: 56px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            min-height: 44px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
 
         /* Secondary controls container - for less frequently used actions */
         .secondary-controls {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 6px;
             width: 100%;
-            padding: 15px;
+            padding: 8px;
             background-color: #f8f9fa;
-            border-radius: 8px;
-            margin-top: 10px;
+            border-radius: 6px;
         }
 
         .secondary-controls h3 {
-            margin: 0 0 10px 0;
-            font-size: 14px;
+            margin: 0 0 6px 0;
+            font-size: 12px;
             color: #666;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -136,15 +150,15 @@
 
         .secondary-button-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-            gap: 8px;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 6px;
         }
 
         .secondary-controls button {
-            padding: 10px 12px;
-            font-size: 14px;
+            padding: 8px 10px;
+            font-size: 13px;
             font-weight: 500;
-            min-height: 40px;
+            min-height: 36px;
             background-color: #6c757d;
             opacity: 0.85;
         }
@@ -225,14 +239,14 @@
         }
 
         .status {
-            margin-top: 20px;
-            padding: 15px;
+            flex-shrink: 0;
+            padding: 8px;
             background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 6px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
             width: 100%;
-            max-width: 500px;
             text-align: center;
+            font-size: 14px;
         }
 
         .error {
@@ -245,63 +259,181 @@
         }
 
         #current-player {
-            font-size: 18px;
+            font-size: 14px;
             font-weight: bold;
-            margin: 10px 0;
+            margin: 4px 0;
             color: #2d3748;
         }
 
         #score-display {
             display: flex;
             justify-content: space-around;
-            margin-top: 15px;
+            margin-top: 6px;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 8px;
         }
 
         #score-display div {
             background-color: #f8f9fa;
-            padding: 8px 12px;
-            border-radius: 6px;
+            padding: 4px 8px;
+            border-radius: 4px;
             font-weight: 600;
-            min-width: 140px;
+            font-size: 12px;
+            min-width: 100px;
             text-align: center;
         }
 
-        /* Mobile-specific styles */
+        /* Mobile and tablet optimizations */
         @media (max-width: 768px) {
-            body {
-                padding: 5px;
+            .container {
+                padding: 3px;
+                gap: 3px;
             }
 
             h1 {
-                margin: 5px 0 15px 0;
-                font-size: 1.8rem;
+                font-size: clamp(1rem, 2.5vw, 1.4rem);
+                padding: 3px 0;
             }
 
             .canvas-container {
-                max-width: min(95vw, 95vh, 500px);
+                max-width: min(92vmin, 95vw);
+                max-height: min(92vmin, 95vw);
             }
 
-            .controls {
-                margin-top: 15px;
-                gap: 12px;
+            .primary-controls button {
+                padding: 10px 12px;
+                font-size: 14px;
+                min-height: 40px;
             }
 
-            button {
-                padding: 12px 16px;
-                font-size: 15px;
-                min-height: 44px;
+            .secondary-controls {
+                padding: 6px;
+                gap: 4px;
             }
 
-            .board-size-controls {
-                flex-direction: column;
-                align-items: center;
-                gap: 8px;
+            .secondary-controls button {
+                padding: 6px 8px;
+                font-size: 12px;
+                min-height: 32px;
             }
 
             .board-size-controls select {
-                min-width: 150px;
+                min-width: 70px;
+                min-height: 28px;
+                font-size: 11px;
+            }
+
+            .status {
+                padding: 6px;
+                font-size: 12px;
+            }
+
+            #current-player {
+                font-size: 12px;
+                margin: 2px 0;
+            }
+
+            #score-display div {
+                padding: 3px 6px;
+                font-size: 11px;
+                min-width: 80px;
+            }
+        }
+
+        /* Extra small mobile devices */
+        @media (max-width: 480px) {
+            .container {
+                padding: 2px;
+                gap: 2px;
+            }
+
+            h1 {
+                font-size: clamp(0.9rem, 2vw, 1.2rem);
+                padding: 2px 0;
+            }
+
+            .primary-controls {
+                gap: 4px;
+            }
+
+            .primary-controls button {
+                padding: 8px 10px;
+                font-size: 13px;
+                min-height: 36px;
+            }
+
+            .secondary-controls {
+                padding: 4px;
+                gap: 3px;
+            }
+
+            .secondary-button-row {
+                grid-template-columns: 1fr;
+                gap: 3px;
+            }
+
+            .secondary-controls button {
+                padding: 5px 6px;
+                font-size: 11px;
+                min-height: 28px;
+            }
+
+            .status {
+                padding: 4px;
+                font-size: 11px;
+            }
+
+            #score-display {
+                flex-direction: column;
+                gap: 4px;
+            }
+        }
+
+        /* Wide screen layout (desktop/landscape tablets) - side-by-side layout */
+        @media (min-aspect-ratio: 4/3) and (min-width: 768px) {
+            .container {
+                flex-direction: row;
+                padding: 8px;
+                gap: 16px;
+            }
+
+            h1 {
+                position: absolute;
+                top: 8px;
+                left: 50%;
+                transform: translateX(-50%);
+                margin: 0;
+                font-size: 1.5rem;
+                z-index: 10;
+            }
+
+            .game-area {
+                flex: 1;
+                margin-top: 40px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .canvas-container {
+                width: 100%;
+                height: 100%;
+                max-width: min(85vh, calc(100vw - 250px));
+                max-height: min(85vh, calc(100vw - 250px));
+            }
+
+            .controls {
+                flex-shrink: 0;
+                width: auto;
+                min-width: 220px;
+                max-width: 400px;
+                max-height: none;
+                margin-top: 40px;
+                gap: 12px;
+                display: flex;
+                flex-direction: column;
+                overflow-y: auto;
+                padding: 8px;
             }
 
             .primary-controls {
@@ -312,6 +444,9 @@
                 padding: 14px 18px;
                 font-size: 16px;
                 min-height: 48px;
+                min-width: auto;
+                width: 100%;
+                white-space: nowrap;
             }
 
             .secondary-controls {
@@ -319,106 +454,79 @@
                 gap: 8px;
             }
 
+            .secondary-controls button {
+                padding: 10px 12px;
+                font-size: 14px;
+                min-height: 38px;
+                min-width: auto;
+                white-space: nowrap;
+            }
+
             .secondary-button-row {
-                grid-template-columns: 1fr 1fr;
-                gap: 6px;
+                display: flex;
+                gap: 8px;
+            }
+
+            .secondary-button-row button {
+                flex: 1;
             }
 
             .status {
-                padding: 12px;
-                margin-top: 15px;
+                display: block;
+                padding: 10px;
+                font-size: 14px;
             }
 
             #current-player {
-                font-size: 16px;
+                font-size: 15px;
+                margin: 6px 0;
             }
 
             #score-display {
-                flex-direction: column;
-                gap: 8px;
-            }
-        }
-
-        /* Small mobile devices */
-        @media (max-width: 480px) {
-            body {
-                padding: 3px;
-            }
-
-            h1 {
-                font-size: 1.5rem;
-                margin: 3px 0 10px 0;
-            }
-
-            .canvas-container {
-                max-width: min(98vw, 98vh, 400px);
-            }
-
-            .controls {
-                margin-top: 10px;
-                gap: 10px;
-                padding: 0 5px;
-            }
-
-            button {
-                padding: 10px 12px;
-                font-size: 14px;
-                min-height: 40px;
-                min-width: 100px;
-            }
-
-            .primary-controls {
+                flex-direction: row;
                 gap: 10px;
             }
 
-            .primary-controls button {
-                padding: 12px 14px;
-                font-size: 15px;
-                min-height: 44px;
-            }
-
-            .secondary-controls {
-                padding: 10px;
-            }
-
-            .secondary-button-row {
-                grid-template-columns: 1fr;
-                gap: 6px;
-            }
-
-            .status {
-                padding: 10px;
+            #score-display div {
+                padding: 6px 10px;
+                font-size: 13px;
+                min-width: 120px;
             }
         }
 
-        /* Landscape orientation on mobile */
-        @media (max-height: 500px) and (orientation: landscape) {
+        /* Mobile landscape (smaller screens) - compact horizontal layout */
+        @media (max-height: 600px) and (orientation: landscape) and (max-width: 767px) {
             .container {
                 flex-direction: row;
-                align-items: flex-start;
-                justify-content: center;
-                gap: 20px;
-                max-width: none;
+                padding: 3px;
+                gap: 8px;
             }
 
             h1 {
                 position: absolute;
-                top: 5px;
+                top: 3px;
                 left: 50%;
                 transform: translateX(-50%);
                 margin: 0;
-                font-size: 1.2rem;
+                font-size: 1rem;
                 z-index: 10;
             }
 
-            .canvas-container {
-                max-width: min(60vh, 400px);
-                margin-top: 40px;
+            .game-area {
+                flex: 1;
+                margin-top: 25px;
             }
 
             .controls {
-                max-width: 300px;
-                margin-top: 40px;
+                flex-shrink: 0;
+                width: 200px;
+                max-height: none;
+                margin-top: 25px;
+            }
+
+            .status {
+                display: none;
+                /* Hide status in mobile landscape to save space */
             }
         }
     </style>
@@ -427,8 +535,10 @@
 <body>
     <div class="container">
         <h1>Go</h1>
-        <div class="canvas-container">
-            <canvas id="game-canvas" width="600" height="600"></canvas>
+        <div class="game-area">
+            <div class="canvas-container">
+                <canvas id="game-canvas" width="600" height="600"></canvas>
+            </div>
         </div>
 
         <div class="controls">
@@ -455,14 +565,15 @@
                     <button id="copy-url-btn">Copy URL</button>
                 </div>
             </div>
-        </div>
 
-        <div class="status">
-            <div id="status-text" class="info">Loading...</div>
-            <div id="current-player">Current Player: Black</div>
-            <div id="score-display">
-                <div>Black Captures: <span id="black-score">0</span></div>
-                <div>White Captures: <span id="white-score">0</span></div>
+            <!-- Status display -->
+            <div class="status">
+                <div id="status-text" class="info">Loading...</div>
+                <div id="current-player">Current Player: Black</div>
+                <div id="score-display">
+                    <div>Black Captures: <span id="black-score">0</span></div>
+                    <div>White Captures: <span id="white-score">0</span></div>
+                </div>
             </div>
         </div>
     </div>
