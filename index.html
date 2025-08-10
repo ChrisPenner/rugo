@@ -265,25 +265,7 @@
             transform: none;
         }
 
-        .status {
-            flex-shrink: 0;
-            padding: 8px;
-            background-color: white;
-            border-radius: 6px;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            text-align: center;
-            font-size: 14px;
-        }
 
-        .error {
-            color: #e53e3e;
-            font-weight: bold;
-        }
-
-        .info {
-            color: #333;
-        }
 
         #current-player {
             font-size: 14px;
@@ -349,11 +331,6 @@
                 font-size: 11px;
             }
 
-            .status {
-                padding: 6px;
-                font-size: 12px;
-            }
-
             #current-player {
                 font-size: 12px;
                 margin: 2px 0;
@@ -401,11 +378,6 @@
                 padding: 5px 6px;
                 font-size: 11px;
                 min-height: 28px;
-            }
-
-            .status {
-                padding: 4px;
-                font-size: 11px;
             }
 
             #score-display {
@@ -497,12 +469,6 @@
                 flex: 1;
             }
 
-            .status {
-                display: block;
-                padding: 10px;
-                font-size: 14px;
-            }
-
             #current-player {
                 font-size: 15px;
                 margin: 6px 0;
@@ -539,15 +505,9 @@
                 margin-top: 8px;
             }
 
-            .status {
-                display: none;
-                /* Hide status in mobile landscape to save space */
-            }
 
-            .game-status {
-                display: none;
-                /* Hide game status in mobile landscape to save space */
-            }
+
+
         }
     </style>
 </head>
@@ -588,11 +548,6 @@
                     <button id="copy-url-btn">Copy URL</button>
                 </div>
             </div>
-
-            <!-- Status display for messages only -->
-            <div class="status">
-                <div id="status-text" class="info">Loading...</div>
-            </div>
         </div>
     </div>
 
@@ -601,20 +556,14 @@
 
         let game = null;
         const canvas = document.getElementById('game-canvas');
-        const statusText = document.getElementById('status-text');
         const currentPlayerText = document.getElementById('current-player');
         let suppressUrlUpdate = false; // Flag to prevent infinite loops
         let eventListenersSetup = false; // Flag to prevent duplicate event listeners
 
         async function initGame() {
             try {
-                statusText.textContent = "Initializing Go Game...";
-                statusText.className = "info";
-
                 // Initialize the wasm module
                 await init();
-
-                statusText.textContent = "Creating game instance...";
 
                 // Get selected board size
                 const boardSize = parseInt(document.getElementById('board-size').value);
@@ -624,8 +573,6 @@
 
                 // Create game instance with selected size
                 game = GoGame.new_with_size(canvas, boardSize);
-
-                statusText.textContent = `Go Game Ready! (${boardSize}×${boardSize})`;
 
                 // Set up event listeners (only once)
                 if (!eventListenersSetup) {
@@ -641,8 +588,6 @@
 
             } catch (error) {
                 console.error('Failed to initialize game:', error);
-                statusText.textContent = `Error: ${error}`;
-                statusText.className = "error";
             }
         }
 
@@ -717,14 +662,12 @@
                             drawBoard();
                             updateUndoRedoButtons();
                             updateUrl();
-                            clearErrorMessage();
                         } else {
-                            // Display error message to user
-                            showErrorMessage(result);
+                            // Log error message
+                            console.log('Move not allowed:', result);
                         }
                     } catch (error) {
                         console.error('Board interaction error:', error);
-                        showErrorMessage('Error processing move: ' + error);
                     }
                 }
             }
@@ -828,19 +771,16 @@
                             drawBoard();
                             updateUndoRedoButtons();
                             updateUrl();
-                            clearErrorMessage();
 
-                            // Show temporary pass message
+                            // Log pass message
                             const player = game.get_current_player() === 1 ? 'White' : 'Black'; // Previous player (who just passed)
                             const previousPlayer = game.get_current_player() === 1 ? 'Black' : 'White';
-                            showErrorMessage(`${previousPlayer} passes. ${player}'s turn.`);
-                            setTimeout(clearErrorMessage, 2000);
+                            console.log(`${previousPlayer} passes. ${player}'s turn.`);
                         } else {
-                            showErrorMessage(result);
+                            console.log('Pass not allowed:', result);
                         }
                     } catch (error) {
                         console.error('Pass error:', error);
-                        showErrorMessage('Error processing pass: ' + error);
                     }
                 }
             });
@@ -848,7 +788,7 @@
             // Copy URL button
             document.getElementById('copy-url-btn').addEventListener('click', async () => {
                 if (!game) {
-                    showErrorMessage('No game to copy URL for');
+                    console.log('No game to copy URL for');
                     return;
                 }
 
@@ -859,9 +799,8 @@
                     // Copy current URL to clipboard
                     await navigator.clipboard.writeText(window.location.href);
 
-                    // Show success message
-                    showErrorMessage('Game URL copied to clipboard!');
-                    setTimeout(clearErrorMessage, 2000);
+                    // Log success message
+                    console.log('Game URL copied to clipboard!');
                 } catch (error) {
                     console.error('Failed to copy URL:', error);
                     // Fallback for browsers that don't support clipboard API
@@ -874,11 +813,9 @@
                         document.execCommand('copy');
                         document.body.removeChild(tempInput);
 
-                        showErrorMessage('Game URL copied to clipboard!');
-                        setTimeout(clearErrorMessage, 2000);
+                        console.log('Game URL copied to clipboard!');
                     } catch (fallbackError) {
                         console.error('Fallback copy failed:', fallbackError);
-                        showErrorMessage('Failed to copy URL to clipboard');
                     }
                 }
             });
@@ -1072,23 +1009,6 @@
             // Update capture scores
             document.getElementById('black-score').textContent = game.get_black_captures();
             document.getElementById('white-score').textContent = game.get_white_captures();
-        }
-
-        // Error message handling
-        function showErrorMessage(message) {
-            statusText.textContent = message;
-            statusText.className = "error";
-
-            // Clear error after 3 seconds
-            setTimeout(() => {
-                clearErrorMessage();
-            }, 3000);
-        }
-
-        function clearErrorMessage() {
-            const boardSize = game ? game.get_board_size() : 19;
-            statusText.textContent = `Go Game Ready! (${boardSize}×${boardSize})`;
-            statusText.className = "info";
         }
 
         // Start the game
