@@ -31,6 +31,7 @@ struct GameState {
     current_player: StoneState,
     black_captures: u32,
     white_captures: u32,
+    last_move: Option<(usize, usize)>, // Track the last move position
 }
 
 // Simple Go game struct without WebGPU for now
@@ -45,6 +46,7 @@ pub struct GoGame {
     history_index: usize,
     black_captures: u32,
     white_captures: u32,
+    last_move: Option<(usize, usize)>, // Track the last move position
 }
 
 #[wasm_bindgen]
@@ -74,6 +76,7 @@ impl GoGame {
             current_player: StoneState::Black,
             black_captures: 0,
             white_captures: 0,
+            last_move: None,
         };
         
         GoGame {
@@ -86,6 +89,7 @@ impl GoGame {
             history_index: 0,
             black_captures: 0,
             white_captures: 0,
+            last_move: None,
         }
     }
     
@@ -163,6 +167,9 @@ impl GoGame {
         // Place the stone
         self.board[board_y][board_x] = placed_stone;
         
+        // Update last move position
+        self.last_move = Some((board_x, board_y));
+        
         let mut total_captured = 0;
         // Check all four adjacent positions for opponent groups to capture
         let adjacent_positions = [
@@ -205,6 +212,7 @@ impl GoGame {
             current_player: self.current_player,
             black_captures: self.black_captures,
             white_captures: self.white_captures,
+            last_move: self.last_move,
         };
         self.history.push(new_state);
         self.history_index = self.history.len() - 1;
@@ -221,6 +229,7 @@ impl GoGame {
             self.current_player = state.current_player;
             self.black_captures = state.black_captures;
             self.white_captures = state.white_captures;
+            self.last_move = state.last_move;
             console_log!("Undo: moved to state {}", self.history_index);
             true
         } else {
@@ -236,6 +245,7 @@ impl GoGame {
             self.current_player = state.current_player;
             self.black_captures = state.black_captures;
             self.white_captures = state.white_captures;
+            self.last_move = state.last_move;
             console_log!("Redo: moved to state {}", self.history_index);
             true
         } else {
@@ -264,6 +274,14 @@ impl GoGame {
         self.white_captures
     }
     
+    // Get the last move position (returns None if no move has been made)
+    pub fn get_last_move(&self) -> Option<Box<[u32]>> {
+        match self.last_move {
+            Some((x, y)) => Some(vec![x as u32, y as u32].into_boxed_slice()),
+            None => None,
+        }
+    }
+    
     // Handle pass move - player passes their turn
     pub fn handle_pass(&mut self) -> String {
         console_log!("Player {} passes", match self.current_player {
@@ -284,12 +302,16 @@ impl GoGame {
             StoneState::Empty => StoneState::Black,
         };
         
+        // Clear last move since this was a pass
+        self.last_move = None;
+        
         // Save the new state after the pass
         let new_state = GameState {
             board: self.board,
             current_player: self.current_player,
             black_captures: self.black_captures,
             white_captures: self.white_captures,
+            last_move: self.last_move,
         };
         self.history.push(new_state);
         self.history_index = self.history.len() - 1;
@@ -431,6 +453,7 @@ impl GoGame {
             self.current_player = current_player;
             self.black_captures = black_captures;
             self.white_captures = white_captures;
+            self.last_move = None; // Clear last move when loading state
             
             // Reset history to current state
             let new_state = GameState {
@@ -438,6 +461,7 @@ impl GoGame {
                 current_player: self.current_player,
                 black_captures: self.black_captures,
                 white_captures: self.white_captures,
+                last_move: self.last_move,
             };
             self.history = vec![new_state];
             self.history_index = 0;

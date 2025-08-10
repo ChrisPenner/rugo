@@ -1187,6 +1187,30 @@
                 }
             }
 
+            // Highlight the most recent move
+            const lastMove = game.get_last_move();
+            if (lastMove && lastMove.length === 2) {
+                const lastX = lastMove[0];
+                const lastY = lastMove[1];
+                const centerX = offsetX + lastX * cellSize;
+                const centerY = offsetY + lastY * cellSize;
+                const highlightRadius = cellSize * 0.3;
+
+                // Draw a colored ring around the last move
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, highlightRadius, 0, 2 * Math.PI);
+                ctx.strokeStyle = '#FF6B6B'; // Red highlight color
+                ctx.lineWidth = Math.max(2, cellSize * 0.08); // Thick highlight ring
+                ctx.stroke();
+
+                // Add a subtle inner glow effect
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, highlightRadius * 0.7, 0, 2 * Math.PI);
+                ctx.strokeStyle = 'rgba(255, 107, 107, 0.4)'; // Semi-transparent red
+                ctx.lineWidth = Math.max(1, cellSize * 0.04);
+                ctx.stroke();
+            }
+
             // Update current player display
             const player = game.get_current_player();
             currentPlayerText.textContent = `Current Player: ${player === 1 ? 'Black' : 'White'}`;
