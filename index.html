@@ -1528,8 +1528,33 @@
                         ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
                         ctx.lineWidth = Math.max(1, cellSize * 0.05);
                         ctx.stroke();
+                    } else if (nextState === 0 && currentState !== 0) {
+                        // Next state is Empty and current state is not empty - show red X to indicate removal
+                        const xSize = radius * 0.6; // Size of the X
+                        const xOffset = xSize * 0.7; // Distance from center to X endpoints
+
+                        ctx.strokeStyle = '#FF4444'; // Bright red
+                        ctx.lineWidth = Math.max(3, cellSize * 0.08); // Thick X
+                        ctx.lineCap = 'round'; // Rounded line ends
+
+                        // Draw X (two diagonal lines)
+                        ctx.beginPath();
+                        ctx.moveTo(centerX - xOffset, centerY - xOffset);
+                        ctx.lineTo(centerX + xOffset, centerY + xOffset);
+                        ctx.moveTo(centerX + xOffset, centerY - xOffset);
+                        ctx.lineTo(centerX - xOffset, centerY + xOffset);
+                        ctx.stroke();
+
+                        // Add a subtle red circle background for better visibility
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY, radius * 0.8, 0, 2 * Math.PI);
+                        ctx.fillStyle = 'rgba(255, 68, 68, 0.15)'; // Very light red background
+                        ctx.fill();
+                        ctx.strokeStyle = 'rgba(255, 68, 68, 0.3)'; // Light red border
+                        ctx.lineWidth = Math.max(1, cellSize * 0.02);
+                        ctx.stroke();
                     }
-                    // If nextState === 0 (Empty), don't draw anything for hover
+                    // If nextState === 0 and currentState === 0 (empty), don't draw anything for hover
                 } else {
                     // Normal game mode: show current player's stone
                     const currentPlayer = game.get_current_player();
