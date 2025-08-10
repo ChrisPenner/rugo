@@ -581,6 +581,8 @@
         let eventListenersSetup = false; // Flag to prevent duplicate event listeners
         let hoverPosition = null; // Track mouse position for hover preview
         let editMode = false; // Track whether we're in edit mode
+        let isDragging = false; // Track if we're currently dragging in edit mode
+        let dragState = null; // The state to apply while dragging (0, 1, or 2)
 
         // Sound system for game audio feedback
         class SoundSystem {
@@ -949,6 +951,10 @@
                             console.log(`Set position result: ${result}`);
 
                             if (result === "Position set successfully") {
+                                // Start dragging with this state
+                                isDragging = true;
+                                dragState = nextState;
+
                                 // Play sound effect for edit action
                                 soundSystem.playTapSound();
 
@@ -956,7 +962,7 @@
                                 hoverPosition = null;
 
                                 drawBoard();
-                                updateUrl();
+                                // Don't update URL here - wait until drag ends
                             } else {
                                 console.log('Edit not allowed:', result);
                             }
@@ -984,55 +990,139 @@
                 }
             }
 
-            // Canvas click handler
-            canvas.addEventListener('click', handleBoardInteraction);
+            // Helper function to handle dragging in edit mode
+            function handleEditDrag(event) {
+                if (!game || !editMode || !isDragging || dragState === null) return;
 
-            // Mouse move handler for hover preview
+                const boardPos = getBoardPositionFromEvent(event);
+                if (!boardPos) return;
+
+                const { x: boardX, y: boardY } = boardPos;
+
+                // Check if position is within board bounds
+                if (isValidBoardPosition(boardX, boardY)) {
+                    // Only apply the drag state if the current position doesn't already have it
+                    const currentState = game.get_board_state(boardX, boardY);
+                    if (currentState !== dragState) {
+                        const result = game.set_board_position(boardX, boardY, dragState);
+                        if (result === "Position set successfully") {
+                            drawBoard();
+                        }
+                    }
+                }
+            }
+
+            // Canvas mousedown handler for drag start
+            canvas.addEventListener('mousedown', (event) => {
+                if (editMode) {
+                    handleBoardInteraction(event);
+                }
+            });
+
+            // Canvas mouseup handler for drag end
+            canvas.addEventListener('mouseup', () => {
+                if (editMode && isDragging) {
+                    isDragging = false;
+                    dragState = null;
+                    updateUrl(); // Update URL once at the end of drag
+                }
+            });
+
+            // Canvas click handler for non-edit mode
+            canvas.addEventListener('click', (event) => {
+                if (!editMode) {
+                    handleBoardInteraction(event);
+                }
+            });
+
+            // Mouse move handler for hover preview and dragging
             canvas.addEventListener('mousemove', (event) => {
                 if (!game) return;
 
+                // Handle dragging in edit mode
+                if (editMode && isDragging) {
+                    handleEditDrag(event);
+                }
+
+                // Handle hover preview
                 const boardPos = getBoardPositionFromEvent(event);
                 if (boardPos && isValidBoardPosition(boardPos.x, boardPos.y)) {
                     hoverPosition = boardPos;
                 } else {
                     hoverPosition = null;
                 }
-                drawBoard(); // Redraw to show/hide hover preview
+
+                // Only redraw for hover if we're not dragging (to avoid excessive redraws)
+                if (!isDragging) {
+                    drawBoard(); // Redraw to show/hide hover preview
+                }
             });
 
-            // Mouse leave handler to clear hover preview
+            // Mouse leave handler to clear hover preview and stop dragging
             canvas.addEventListener('mouseleave', () => {
                 hoverPosition = null;
+                if (editMode && isDragging) {
+                    isDragging = false;
+                    dragState = null;
+                    updateUrl(); // Update URL when drag ends
+                }
                 drawBoard();
             });
 
-            // Touch event handlers for better mobile support
+            // Touch event handlers for better mobile support with drag functionality
             canvas.addEventListener('touchstart', (event) => {
-                // Store the touch for potential tap detection
-                canvas._touchStartTime = Date.now();
-                canvas._touchStartPos = {
-                    x: event.touches[0].clientX,
-                    y: event.touches[0].clientY
-                };
+                event.preventDefault(); // Prevent scrolling
+
+                if (editMode) {
+                    // In edit mode, start dragging immediately
+                    handleBoardInteraction(event);
+                } else {
+                    // Store the touch for potential tap detection in normal mode
+                    canvas._touchStartTime = Date.now();
+                    canvas._touchStartPos = {
+                        x: event.touches[0].clientX,
+                        y: event.touches[0].clientY
+                    };
+                }
+            });
+
+            canvas.addEventListener('touchmove', (event) => {
+                event.preventDefault(); // Prevent scrolling
+
+                if (editMode && isDragging) {
+                    // Handle dragging in edit mode
+                    handleEditDrag(event);
+                }
             });
 
             canvas.addEventListener('touchend', (event) => {
-                // Only treat as tap if it was quick and didn't move much
-                if (canvas._touchStartTime && canvas._touchStartPos) {
-                    const touchDuration = Date.now() - canvas._touchStartTime;
-                    const touch = event.changedTouches[0];
-                    const deltaX = Math.abs(touch.clientX - canvas._touchStartPos.x);
-                    const deltaY = Math.abs(touch.clientY - canvas._touchStartPos.y);
+                event.preventDefault(); // Prevent scrolling
 
-                    // Consider it a tap if it was quick and didn't move much
-                    if (touchDuration < 500 && deltaX < 10 && deltaY < 10) {
-                        handleBoardInteraction(event);
+                if (editMode) {
+                    // End dragging in edit mode
+                    if (isDragging) {
+                        isDragging = false;
+                        dragState = null;
+                        updateUrl(); // Update URL when drag ends
                     }
-                }
+                } else {
+                    // Handle tap in normal mode
+                    if (canvas._touchStartTime && canvas._touchStartPos) {
+                        const touchDuration = Date.now() - canvas._touchStartTime;
+                        const touch = event.changedTouches[0];
+                        const deltaX = Math.abs(touch.clientX - canvas._touchStartPos.x);
+                        const deltaY = Math.abs(touch.clientY - canvas._touchStartPos.y);
 
-                // Clean up
-                delete canvas._touchStartTime;
-                delete canvas._touchStartPos;
+                        // Consider it a tap if it was quick and didn't move much
+                        if (touchDuration < 500 && deltaX < 10 && deltaY < 10) {
+                            handleBoardInteraction(event);
+                        }
+                    }
+
+                    // Clean up
+                    delete canvas._touchStartTime;
+                    delete canvas._touchStartPos;
+                }
             });
 
             // Prevent context menu on touch devices
