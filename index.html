@@ -2425,12 +2425,13 @@
             drawSmallStone(ctx, leftX + stoneRadius, statusY - fontSize / 4, stoneRadius, nextPlayerColor);
 
             // RIGHT SIDE: Draw capture scores
+            ctx.fillStyle = '#000';
             ctx.textAlign = 'right';
             const boardRightX = boardLeftX + boardWidth;
             let rightX = boardRightX;
 
-            // Draw black captures (rightmost)
-            const blackText = `${blackCaptures}`;
+            // Draw the number of black stones which were captured by white
+            const blackText = `${whiteCaptures}`;
             ctx.fillText(blackText, rightX, statusY);
             rightX -= ctx.measureText(blackText).width + 5;
 
@@ -2438,8 +2439,8 @@
             drawSmallStone(ctx, rightX - stoneRadius, statusY - fontSize / 4, stoneRadius, 'black');
             rightX -= (stoneRadius * 2) + 15;
 
-            // Draw white captures
-            const whiteText = `${whiteCaptures}`;
+            // Draw the number of white stones which were captured by black
+            const whiteText = `${blackCaptures}`;
             ctx.fillText(whiteText, rightX, statusY);
             rightX -= ctx.measureText(whiteText).width + 5;
 
