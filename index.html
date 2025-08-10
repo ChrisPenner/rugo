@@ -91,40 +91,6 @@
             border-radius: 57px;
         }
 
-        /* Compact game status under the board */
-        .game-status {
-            margin-top: 8px;
-            text-align: center;
-            font-size: 14px;
-            display: flex;
-            flex-direction: row;
-        }
-
-        .game-status #current-player {
-            font-size: 16px;
-            font-weight: bold;
-            margin: 4px 0;
-            color: #2d3748;
-        }
-
-        .game-status #score-display {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 4px;
-            flex-wrap: wrap;
-        }
-
-        .game-status #score-display div {
-            background-color: #f8f9fa;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-weight: 600;
-            font-size: 12px;
-            min-width: 100px;
-            text-align: center;
-        }
-
         .controls {
             flex-shrink: 0;
             width: 100%;
@@ -302,33 +268,6 @@
             transform: none;
         }
 
-
-
-        #current-player {
-            font-size: 14px;
-            font-weight: bold;
-            margin: 4px 0;
-            color: #2d3748;
-        }
-
-        #score-display {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 6px;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        #score-display div {
-            background-color: #f8f9fa;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-weight: 600;
-            font-size: 12px;
-            min-width: 100px;
-            text-align: center;
-        }
-
         /* Mobile and tablet optimizations */
         @media (max-width: 768px) {
             .container {
@@ -367,17 +306,6 @@
                 min-height: 28px;
                 font-size: 11px;
             }
-
-            #current-player {
-                font-size: 12px;
-                margin: 2px 0;
-            }
-
-            #score-display div {
-                padding: 3px 6px;
-                font-size: 11px;
-                min-width: 80px;
-            }
         }
 
         /* Extra small mobile devices */
@@ -415,11 +343,6 @@
                 padding: 5px 6px;
                 font-size: 11px;
                 min-height: 28px;
-            }
-
-            #score-display {
-                flex-direction: column;
-                gap: 4px;
             }
         }
 
@@ -505,22 +428,6 @@
             .secondary-button-row button {
                 flex: 1;
             }
-
-            #current-player {
-                font-size: 15px;
-                margin: 6px 0;
-            }
-
-            #score-display {
-                flex-direction: row;
-                gap: 10px;
-            }
-
-            #score-display div {
-                padding: 6px 10px;
-                font-size: 13px;
-                min-width: 120px;
-            }
         }
 
         /* Mobile landscape (smaller screens) - compact horizontal layout */
@@ -558,12 +465,6 @@
                     <canvas id="magnifier-canvas" width="180" height="180"></canvas>
                 </div>
             </div>
-            <!-- Compact game status directly under the board -->
-            <div class="game-status">
-                <div id="current-player">Current Player: Black</div>
-                <div>Black Captures: <span id="black-score">0</span></div>
-                <div>White Captures: <span id="white-score">0</span></div>
-            </div>
         </div>
 
         <div class="controls">
@@ -599,7 +500,6 @@
 
         let game = null;
         const canvas = document.getElementById('game-canvas');
-        const currentPlayerText = document.getElementById('current-player');
         let suppressUrlUpdate = false; // Flag to prevent infinite loops
         let eventListenersSetup = false; // Flag to prevent duplicate event listeners
         let hoverPosition = null; // Track mouse position for hover preview
@@ -1401,7 +1301,7 @@
                 // Only constrain horizontally - allow vertical overflow for better UX
                 if (x < 10) x = 10;
                 if (x + magnifierWidth > viewportWidth - 10) x = viewportWidth - magnifierWidth - 10;
-                
+
                 // Don't constrain vertically - let it clip off screen to maintain relative position
 
                 magnifier.style.left = x + 'px';
@@ -1896,6 +1796,88 @@
             }
         });
 
+        // Helper function to draw a small stone for status display
+        function drawSmallStone(ctx, x, y, radius, color) {
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, 2 * Math.PI);
+
+            if (color === 'black') {
+                ctx.fillStyle = '#000';
+                ctx.fill();
+            } else {
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+        }
+
+        // Helper function to draw game status above the board
+        function drawGameStatus(ctx, canvasWidth, boardTopY, cellSize) {
+            if (!game) return;
+
+            const currentPlayer = game.get_current_player();
+            const blackCaptures = game.get_black_captures();
+            const whiteCaptures = game.get_white_captures();
+
+            // Calculate positioning
+            const statusY = boardTopY - 25; // Position above the board
+            const fontSize = Math.max(12, cellSize * 0.3);
+            const stoneRadius = Math.max(6, cellSize * 0.15);
+
+            ctx.font = `${fontSize}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#000';
+
+            // Calculate total width needed for the status line
+            const nextText = 'Next:';
+            const whiteText = `: ${whiteCaptures}`;
+            const blackText = `: ${blackCaptures}`;
+
+            const nextTextWidth = ctx.measureText(nextText).width;
+            const whiteTextWidth = ctx.measureText(whiteText).width;
+            const blackTextWidth = ctx.measureText(blackText).width;
+
+            const spacing = 10;
+            const stoneSpacing = 5;
+
+            const totalWidth = nextTextWidth + spacing +
+                (stoneRadius * 2) + stoneSpacing + // next player stone
+                (stoneRadius * 2) + stoneSpacing + // white stone
+                whiteTextWidth + spacing +
+                (stoneRadius * 2) + stoneSpacing + // black stone
+                blackTextWidth;
+
+            // Start from center and work outward
+            let currentX = canvasWidth / 2 - totalWidth / 2;
+
+            // Draw "Next:"
+            ctx.textAlign = 'left';
+            ctx.fillText(nextText, currentX, statusY);
+            currentX += nextTextWidth + spacing;
+
+            // Draw next player stone
+            const nextPlayerColor = currentPlayer === 1 ? 'black' : 'white';
+            drawSmallStone(ctx, currentX + stoneRadius, statusY - fontSize / 4, stoneRadius, nextPlayerColor);
+            currentX += (stoneRadius * 2) + spacing;
+
+            // Draw white stone
+            drawSmallStone(ctx, currentX + stoneRadius, statusY - fontSize / 4, stoneRadius, 'white');
+            currentX += (stoneRadius * 2) + stoneSpacing;
+
+            // Draw white captures
+            ctx.fillText(whiteText, currentX, statusY);
+            currentX += whiteTextWidth + spacing;
+
+            // Draw black stone
+            drawSmallStone(ctx, currentX + stoneRadius, statusY - fontSize / 4, stoneRadius, 'black');
+            currentX += (stoneRadius * 2) + stoneSpacing;
+
+            // Draw black captures
+            ctx.fillText(blackText, currentX, statusY);
+        }
+
         function drawBoard() {
             if (!game) return;
 
@@ -2094,13 +2076,8 @@
                 ctx.stroke();
             }
 
-            // Update current player display
-            const player = game.get_current_player();
-            currentPlayerText.textContent = `Current Player: ${player === 1 ? 'Black' : 'White'}`;
-
-            // Update capture scores
-            document.getElementById('black-score').textContent = game.get_black_captures();
-            document.getElementById('white-score').textContent = game.get_white_captures();
+            // Draw game status above the board
+            drawGameStatus(ctx, displayWidth, offsetY, cellSize);
         }
 
         // Start the game
