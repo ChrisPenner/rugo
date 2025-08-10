@@ -570,6 +570,35 @@ impl GoGame {
 
         false
     }
+
+    // Check if there are any stones on the board
+    pub fn has_stones_on_board(&self) -> bool {
+        for y in 0..self.board_size {
+            for x in 0..self.board_size {
+                if self.board[y][x] != StoneState::Empty {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    // Directly set a board position for edit mode
+    pub fn set_board_position(&mut self, x: usize, y: usize, state: u8) -> String {
+        if x >= self.board_size || y >= self.board_size {
+            return "Invalid position".to_string();
+        }
+
+        let stone_state = match state {
+            0 => StoneState::Empty,
+            1 => StoneState::Black,
+            2 => StoneState::White,
+            _ => return "Invalid state".to_string(),
+        };
+
+        self.board[y][x] = stone_state;
+        return "Position set successfully".to_string();
+    }
 }
 
 // Variable-length integer encoding (LEB128-style)

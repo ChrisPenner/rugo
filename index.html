@@ -567,6 +567,9 @@
                     <button id="sound-toggle-btn">🔊 Sound: ON</button>
                     <button id="wake-lock-btn">💡 Prevent sleep: OFF</button>
                 </div>
+                <div class="tertiary-button-row">
+                    <button id="edit-mode-btn">✏️ Edit Mode: OFF</button>
+                </div>
             </div>
         </div>
     </div>
@@ -580,6 +583,7 @@
         let suppressUrlUpdate = false; // Flag to prevent infinite loops
         let eventListenersSetup = false; // Flag to prevent duplicate event listeners
         let hoverPosition = null; // Track mouse position for hover preview
+        let editMode = false; // Track whether we're in edit mode
 
         // Sound system for game audio feedback
         class SoundSystem {
@@ -849,7 +853,12 @@
                 return false;
             }
 
-            // Check if position is empty
+            // In edit mode, allow clicking on any position (empty or occupied)
+            if (editMode) {
+                return true;
+            }
+
+            // In normal game mode, check if position is empty
             return game.get_board_state(boardX, boardY) === 0;
         }
 
@@ -930,20 +939,47 @@
                 // Check if click is within board bounds and position is valid
                 if (isValidBoardPosition(boardX, boardY)) {
                     try {
-                        const result = game.handle_board_click(boardX, boardY);
-                        if (result === "Move successful") {
-                            // Play sound effect for successful stone placement
-                            soundSystem.playTapSound();
+                        if (editMode) {
+                            // Edit mode: cycle through states (Empty -> Black -> White -> Empty)
+                            const currentState = game.get_board_state(boardX, boardY);
 
-                            // Clear hover position after successful move
-                            hoverPosition = null;
+                            // Cycle: 0 (Empty) -> 1 (Black) -> 2 (White) -> 0 (Empty)
+                            const nextState = (currentState + 1) % 3;
 
-                            drawBoard();
-                            updateUndoRedoButtons();
-                            updateUrl();
+                            console.log(`Edit mode: position (${boardX}, ${boardY}), current state: ${currentState}, next state: ${nextState}`);
+
+                            const result = game.set_board_position(boardX, boardY, nextState);
+                            console.log(`Set position result: ${result}`);
+
+                            if (result === "Position set successfully") {
+                                // Play sound effect for edit action
+                                soundSystem.playTapSound();
+
+                                // Clear hover position after edit
+                                hoverPosition = null;
+
+                                drawBoard();
+                                updateUrl();
+                            } else {
+                                console.log('Edit not allowed:', result);
+                            }
                         } else {
-                            // Log error message
-                            console.log('Move not allowed:', result);
+                            // Normal game mode
+                            const result = game.handle_board_click(boardX, boardY);
+                            if (result === "Move successful") {
+                                // Play sound effect for successful stone placement
+                                soundSystem.playTapSound();
+
+                                // Clear hover position after successful move
+                                hoverPosition = null;
+
+                                drawBoard();
+                                updateUndoRedoButtons();
+                                updateUrl();
+                            } else {
+                                // Log error message
+                                console.log('Move not allowed:', result);
+                            }
                         }
                     } catch (error) {
                         console.error('Board interaction error:', error);
@@ -1167,6 +1203,34 @@
                 }
             });
 
+            // Edit mode toggle button
+            document.getElementById('edit-mode-btn').addEventListener('click', () => {
+                const button = document.getElementById('edit-mode-btn');
+
+                if (!editMode && game && game.has_stones_on_board()) {
+                    // Warn user about losing undo history
+                    const confirmed = confirm(
+                        'Entering edit mode will clear your undo history. Are you sure you want to continue?'
+                    );
+                    if (!confirmed) {
+                        return;
+                    }
+                }
+
+                editMode = !editMode;
+                if (editMode) {
+                    button.textContent = '✏️ Edit Mode: ON';
+                    button.style.backgroundColor = '#4CAF50';
+                    button.style.color = 'white';
+                } else {
+                    button.textContent = '✏️ Edit Mode: OFF';
+                    button.style.backgroundColor = '';
+                    button.style.color = '';
+                }
+
+                console.log('Edit mode:', editMode ? 'ON' : 'OFF');
+            });
+
             // Handle window resize and orientation changes
             let resizeTimeout;
             window.addEventListener('resize', () => {
@@ -1356,24 +1420,47 @@
                 const centerX = offsetX + hoverPosition.x * cellSize;
                 const centerY = offsetY + hoverPosition.y * cellSize;
                 const radius = cellSize * 0.4;
-                const currentPlayer = game.get_current_player();
 
                 ctx.beginPath();
                 ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
 
-                if (currentPlayer === 1) { // Black preview
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; // Translucent black
-                    ctx.fill();
-                    // Add a subtle border to make it more visible
-                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
-                    ctx.lineWidth = Math.max(1, cellSize * 0.03);
-                    ctx.stroke();
-                } else { // White preview
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; // Translucent white
-                    ctx.fill();
-                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)'; // Subtle border
-                    ctx.lineWidth = Math.max(1, cellSize * 0.05);
-                    ctx.stroke();
+                if (editMode) {
+                    // Edit mode: show next state in cycle
+                    const currentState = game.get_board_state(hoverPosition.x, hoverPosition.y);
+                    const nextState = (currentState + 1) % 3; // Cycle: Empty -> Black -> White -> Empty
+
+                    if (nextState === 1) { // Next is Black
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; // Translucent black
+                        ctx.fill();
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+                        ctx.lineWidth = Math.max(1, cellSize * 0.03);
+                        ctx.stroke();
+                    } else if (nextState === 2) { // Next is White
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; // Translucent white
+                        ctx.fill();
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+                        ctx.lineWidth = Math.max(1, cellSize * 0.05);
+                        ctx.stroke();
+                    }
+                    // If nextState === 0 (Empty), don't draw anything for hover
+                } else {
+                    // Normal game mode: show current player's stone
+                    const currentPlayer = game.get_current_player();
+
+                    if (currentPlayer === 1) { // Black preview
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; // Translucent black
+                        ctx.fill();
+                        // Add a subtle border to make it more visible
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+                        ctx.lineWidth = Math.max(1, cellSize * 0.03);
+                        ctx.stroke();
+                    } else { // White preview
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; // Translucent white
+                        ctx.fill();
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)'; // Subtle border
+                        ctx.lineWidth = Math.max(1, cellSize * 0.05);
+                        ctx.stroke();
+                    }
                 }
             }
 
