@@ -31,17 +31,16 @@
             width: 100vw;
             padding: 15px 5px 5px 5px;
             gap: 5px;
+            justify-content: center;
         }
 
-        /* Main game area - takes most of the space */
+        /* Main game area */
         .game-area {
-            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 0;
-            /* Important for flex sizing */
         }
 
         /* Responsive canvas container */
@@ -97,6 +96,7 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
+            margin: 10px 0;
         }
 
         .board-size-controls {
@@ -307,16 +307,25 @@
         @media (max-width: 768px) {
             .container {
                 padding: 20px 3px 3px 3px;
-                gap: 3px;
+                gap: 5px; /* Direct gap between board and controls */
             }
 
             .game-area {
-                margin-top: 10px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                margin-top: 0; /* Remove top margin to use all available space */
+                padding-bottom: 0; /* No bottom padding - controls will be right below */
             }
 
             .canvas-container {
                 max-width: min(92vmin, 95vw);
                 max-height: min(92vmin, 95vw);
+                margin-bottom: 0; /* No bottom margin - controls will be right below */
+            }
+
+            .controls {
+                flex-shrink: 0; /* Don't shrink the controls */
             }
 
             .primary-controls button {
