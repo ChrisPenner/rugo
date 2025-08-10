@@ -1395,13 +1395,14 @@
                 let x = touch.clientX - magnifierWidth / 2;
                 let y = touch.clientY - offsetY;
 
-                // Keep magnifier within viewport
+                // Keep magnifier within viewport horizontally, but allow vertical clipping
                 const viewportWidth = window.innerWidth;
-                const viewportHeight = window.innerHeight;
 
+                // Only constrain horizontally - allow vertical overflow for better UX
                 if (x < 10) x = 10;
                 if (x + magnifierWidth > viewportWidth - 10) x = viewportWidth - magnifierWidth - 10;
-                if (y < 10) y = 10;
+                
+                // Don't constrain vertically - let it clip off screen to maintain relative position
 
                 magnifier.style.left = x + 'px';
                 magnifier.style.top = y + 'px';
