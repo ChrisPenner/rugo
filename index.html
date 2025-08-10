@@ -738,13 +738,26 @@
             const rect = container.getBoundingClientRect();
             const size = Math.min(rect.width, rect.height);
 
-            // Set canvas internal dimensions to a fixed size for consistent rendering
-            canvas.width = 600;
-            canvas.height = 600;
+            // Get device pixel ratio for high-DPI displays
+            const devicePixelRatio = window.devicePixelRatio || 1;
 
-            // Scale the canvas using CSS to fit the container
-            canvas.style.width = size + 'px';
-            canvas.style.height = size + 'px';
+            // Calculate the actual pixel size we want to render at
+            const displaySize = Math.floor(size);
+            const renderSize = Math.floor(displaySize * devicePixelRatio);
+
+            // Set canvas internal dimensions to high resolution
+            canvas.width = renderSize;
+            canvas.height = renderSize;
+
+            // Set CSS size to display size
+            canvas.style.width = displaySize + 'px';
+            canvas.style.height = displaySize + 'px';
+
+            // Scale the context to match device pixel ratio
+            const ctx = canvas.getContext('2d');
+            ctx.scale(devicePixelRatio, devicePixelRatio);
+
+            console.log(`Canvas setup: Display ${displaySize}px, Render ${renderSize}px, DPR ${devicePixelRatio}`);
         }
 
         function setupEventListeners() {
@@ -778,19 +791,22 @@
                 }
 
                 // Calculate coordinates relative to the displayed canvas size
-                const canvasX = (clientX - rect.left) * (canvas.width / rect.width);
-                const canvasY = (clientY - rect.top) * (canvas.height / rect.height);
+                // Account for device pixel ratio scaling
+                const devicePixelRatio = window.devicePixelRatio || 1;
+                const displayWidth = canvas.width / devicePixelRatio;
+                const displayHeight = canvas.height / devicePixelRatio;
+
+                const canvasX = (clientX - rect.left) * (displayWidth / rect.width);
+                const canvasY = (clientY - rect.top) * (displayHeight / rect.height);
 
                 // Get current board size
                 const currentBoardSize = game.get_board_size();
 
                 // Calculate board layout (same as in drawBoard)
-                const width = canvas.width;
-                const height = canvas.height;
-                const cellSize = Math.min(width, height) / (currentBoardSize + 1);
+                const cellSize = Math.min(displayWidth, displayHeight) / (currentBoardSize + 1);
                 const boardPixelSize = cellSize * (currentBoardSize - 1);
-                const offsetX = (width - boardPixelSize) / 2;
-                const offsetY = (height - boardPixelSize) / 2;
+                const offsetX = (displayWidth - boardPixelSize) / 2;
+                const offsetY = (displayHeight - boardPixelSize) / 2;
 
                 // Convert canvas coordinates to board coordinates
                 const boardX = Math.round((canvasX - offsetX) / cellSize);
@@ -1075,40 +1091,43 @@
             if (!game) return;
 
             const ctx = canvas.getContext('2d');
-            const width = canvas.width;
-            const height = canvas.height;
+
+            // Get the actual display size (accounting for device pixel ratio scaling)
+            const devicePixelRatio = window.devicePixelRatio || 1;
+            const displayWidth = canvas.width / devicePixelRatio;
+            const displayHeight = canvas.height / devicePixelRatio;
 
             // Get current board size
             const currentBoardSize = game.get_board_size();
 
             // Clear canvas
             ctx.fillStyle = '#DEB887';
-            ctx.fillRect(0, 0, width, height);
+            ctx.fillRect(0, 0, displayWidth, displayHeight);
 
-            // Draw grid lines
+            // Draw grid lines with crisp lines
             ctx.strokeStyle = '#000';
             ctx.lineWidth = 1;
 
-            const cellSize = Math.min(width, height) / (currentBoardSize + 1);
+            const cellSize = Math.min(displayWidth, displayHeight) / (currentBoardSize + 1);
             const boardPixelSize = cellSize * (currentBoardSize - 1);
-            const offsetX = (width - boardPixelSize) / 2;
-            const offsetY = (height - boardPixelSize) / 2;
+            const offsetX = (displayWidth - boardPixelSize) / 2;
+            const offsetY = (displayHeight - boardPixelSize) / 2;
 
             // Draw horizontal lines (need boardSize lines for boardSize intersections)
             for (let i = 0; i < currentBoardSize; i++) {
-                const y = offsetY + i * cellSize;
+                const y = Math.round(offsetY + i * cellSize) + 0.5; // +0.5 for crisp lines
                 ctx.beginPath();
-                ctx.moveTo(offsetX, y);
-                ctx.lineTo(offsetX + boardPixelSize, y);
+                ctx.moveTo(Math.round(offsetX) + 0.5, y);
+                ctx.lineTo(Math.round(offsetX + boardPixelSize) + 0.5, y);
                 ctx.stroke();
             }
 
             // Draw vertical lines (need boardSize lines for boardSize intersections)
             for (let i = 0; i < currentBoardSize; i++) {
-                const x = offsetX + i * cellSize;
+                const x = Math.round(offsetX + i * cellSize) + 0.5; // +0.5 for crisp lines
                 ctx.beginPath();
-                ctx.moveTo(x, offsetY);
-                ctx.lineTo(x, offsetY + boardPixelSize);
+                ctx.moveTo(x, Math.round(offsetY) + 0.5);
+                ctx.lineTo(x, Math.round(offsetY + boardPixelSize) + 0.5);
                 ctx.stroke();
             }
 
@@ -1133,15 +1152,16 @@
             }
 
             ctx.fillStyle = '#000';
+            const starRadius = Math.max(2, cellSize * 0.08); // Scale star point size with board
             for (let [sx, sy] of starPoints) {
                 const x = offsetX + sx * cellSize;
                 const y = offsetY + sy * cellSize;
                 ctx.beginPath();
-                ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                ctx.arc(x, y, starRadius, 0, 2 * Math.PI);
                 ctx.fill();
             }
 
-            // Draw stones
+            // Draw stones with high quality
             for (let y = 0; y < currentBoardSize; y++) {
                 for (let x = 0; x < currentBoardSize; x++) {
                     const state = game.get_board_state(x, y);
@@ -1155,14 +1175,12 @@
 
                         if (state === 1) { // Black
                             ctx.fillStyle = '#000';
+                            ctx.fill();
                         } else { // White
                             ctx.fillStyle = '#FFF';
+                            ctx.fill();
                             ctx.strokeStyle = '#000';
-                            ctx.lineWidth = 2;
-                        }
-
-                        ctx.fill();
-                        if (state === 2) {
+                            ctx.lineWidth = Math.max(1, cellSize * 0.05); // Scale stroke width
                             ctx.stroke();
                         }
                     }
