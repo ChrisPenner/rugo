@@ -804,7 +804,8 @@
         const userPrefs = {
             soundEnabled: 'sound_enabled',
             wakeLockEnabled: 'wake_lock_enabled',
-            preferredBoardSize: 'preferred_board_size'
+            preferredBoardSize: 'preferred_board_size',
+            lastGameState: 'last_game_state'
         };
 
         // Function to save user preferences to localStorage
@@ -839,6 +840,40 @@
                 console.warn('Failed to load preference:', error);
                 return defaultValue;
             }
+        }
+
+        // Function to save current game state to localStorage
+        function saveGameStateToLocalStorage() {
+            if (!game) return;
+
+            try {
+                const state = game.serialize_state();
+                localStorage.setItem(userPrefs.lastGameState, state);
+                console.log('Game state saved to localStorage');
+            } catch (error) {
+                console.warn('Failed to save game state to localStorage:', error);
+            }
+        }
+
+        // Function to load game state from localStorage
+        function loadGameStateFromLocalStorage() {
+            try {
+                const state = localStorage.getItem(userPrefs.lastGameState);
+                if (state && game) {
+                    if (game.deserialize_state(state)) {
+                        console.log('Game state restored from localStorage');
+                        // Update board size selector to match loaded state
+                        const boardSize = game.get_board_size();
+                        document.getElementById('board-size').value = boardSize.toString();
+                        return true;
+                    } else {
+                        console.warn('Failed to deserialize game state from localStorage');
+                    }
+                }
+            } catch (error) {
+                console.warn('Failed to load game state from localStorage:', error);
+            }
+            return false;
         }
 
         // Utility function to show confirmation with "Don't notify me again" option
@@ -1078,9 +1113,14 @@
                     setupEventListeners();
                 }
 
-                // Try to load state from URL, otherwise draw fresh board
+                // Try to load state from URL first, then localStorage, otherwise draw fresh board
                 if (!loadStateFromUrl()) {
-                    updateUrl(); // Set initial state in URL
+                    if (!loadGameStateFromLocalStorage()) {
+                        updateUrl(); // Set initial state in URL only for fresh games
+                    } else {
+                        // If we loaded from localStorage, update URL to match
+                        updateUrl();
+                    }
                 }
                 drawBoard();
                 updateUndoRedoButtons();
@@ -1402,6 +1442,10 @@
                 const url = new URL(window.location);
                 url.searchParams.delete('state');
                 window.history.replaceState(null, '', url);
+
+                // Clear localStorage game state when changing board size
+                localStorage.removeItem(userPrefs.lastGameState);
+
                 initGame(); // Start new game with selected size
             });
 
@@ -1420,6 +1464,9 @@
                 const url = new URL(window.location);
                 url.searchParams.delete('state');
                 window.history.replaceState(null, '', url);
+
+                // Clear localStorage game state for fresh game
+                localStorage.removeItem(userPrefs.lastGameState);
 
                 // Start fresh game
                 initGame();
@@ -1632,6 +1679,9 @@
                 const url = new URL(window.location);
                 url.searchParams.set('state', state);
                 window.history.replaceState(null, '', url);
+
+                // Also save to localStorage for automatic restoration
+                saveGameStateToLocalStorage();
             } catch (error) {
                 console.warn('Failed to update URL:', error);
             }
