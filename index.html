@@ -171,6 +171,13 @@
             align-items: center;
         }
 
+        /* Single button row for actions like sound toggle */
+        .secondary-button-row:has(button:only-child),
+        .single-button-row {
+            grid-template-columns: 1fr;
+            justify-items: center;
+        }
+
         .secondary-button-row select {
             padding: 8px 10px;
             font-size: 13px;
@@ -548,6 +555,9 @@
                     </select>
                     <button id="copy-url-btn">Copy Game State</button>
                 </div>
+                <div class="secondary-button-row single-button-row">
+                    <button id="sound-toggle-btn">🔊 Sound: ON</button>
+                </div>
             </div>
         </div>
     </div>
@@ -560,6 +570,87 @@
         const currentPlayerText = document.getElementById('current-player');
         let suppressUrlUpdate = false; // Flag to prevent infinite loops
         let eventListenersSetup = false; // Flag to prevent duplicate event listeners
+
+        // Sound system for game audio feedback
+        class SoundSystem {
+            constructor() {
+                this.audioContext = null;
+                this.enabled = true;
+                this.volume = 0.3; // Keep sounds subtle
+                this.initAudioContext();
+            }
+
+            async initAudioContext() {
+                try {
+                    // Create audio context on first user interaction
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+                    // Resume context if it's suspended (required for some browsers)
+                    if (this.audioContext.state === 'suspended') {
+                        await this.audioContext.resume();
+                    }
+                } catch (error) {
+                    console.warn('Audio not supported:', error);
+                    this.enabled = false;
+                }
+            }
+
+            async ensureAudioContext() {
+                if (!this.audioContext) {
+                    await this.initAudioContext();
+                }
+                if (this.audioContext && this.audioContext.state === 'suspended') {
+                    await this.audioContext.resume();
+                }
+            }
+
+            // Create a subtle tap sound using Web Audio API
+            async playTapSound() {
+                if (!this.enabled || !this.audioContext) return;
+
+                try {
+                    await this.ensureAudioContext();
+
+                    // Create oscillator for the tap sound
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+
+                    // Connect nodes
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+
+                    // Configure the tap sound - short, subtle click
+                    oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime); // Higher frequency for crisp sound
+                    oscillator.frequency.exponentialRampToValueAtTime(200, this.audioContext.currentTime + 0.01); // Quick frequency drop
+
+                    // Very short envelope for a crisp tap
+                    gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(this.volume, this.audioContext.currentTime + 0.001);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.05);
+
+                    // Play the sound
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + 0.05);
+
+                } catch (error) {
+                    console.warn('Error playing sound:', error);
+                }
+            }
+
+            // Toggle sound on/off
+            toggle() {
+                this.enabled = !this.enabled;
+                return this.enabled;
+            }
+
+            // Set volume (0.0 to 1.0)
+            setVolume(volume) {
+                this.volume = Math.max(0, Math.min(1, volume));
+            }
+        }
+
+        // Initialize sound system
+        const soundSystem = new SoundSystem();
 
         async function initGame() {
             try {
@@ -660,6 +751,9 @@
                     try {
                         const result = game.handle_board_click(boardX, boardY);
                         if (result === "Move successful") {
+                            // Play sound effect for successful stone placement
+                            soundSystem.playTapSound();
+
                             drawBoard();
                             updateUndoRedoButtons();
                             updateUrl();
@@ -748,6 +842,9 @@
             // Undo button
             document.getElementById('undo-btn').addEventListener('click', () => {
                 if (game && game.undo()) {
+                    // Play sound effect for undo
+                    soundSystem.playTapSound();
+
                     drawBoard();
                     updateUndoRedoButtons();
                     updateUrl();
@@ -757,6 +854,9 @@
             // Redo button
             document.getElementById('redo-btn').addEventListener('click', () => {
                 if (game && game.redo()) {
+                    // Play sound effect for redo
+                    soundSystem.playTapSound();
+
                     drawBoard();
                     updateUndoRedoButtons();
                     updateUrl();
@@ -769,6 +869,9 @@
                     try {
                         const result = game.handle_pass();
                         if (result === "Pass successful") {
+                            // Play sound effect for pass
+                            soundSystem.playTapSound();
+
                             drawBoard();
                             updateUndoRedoButtons();
                             updateUrl();
@@ -818,6 +921,19 @@
                     } catch (fallbackError) {
                         console.error('Fallback copy failed:', fallbackError);
                     }
+                }
+            });
+
+            // Sound toggle button
+            document.getElementById('sound-toggle-btn').addEventListener('click', () => {
+                const enabled = soundSystem.toggle();
+                const button = document.getElementById('sound-toggle-btn');
+                if (enabled) {
+                    button.textContent = '🔊 Sound: ON';
+                    // Play a test sound to confirm it's working
+                    soundSystem.playTapSound();
+                } else {
+                    button.textContent = '🔇 Sound: OFF';
                 }
             });
 
