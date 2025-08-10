@@ -958,8 +958,8 @@
                                 // Play sound effect for edit action
                                 soundSystem.playTapSound();
 
-                                // Clear hover position after edit
-                                hoverPosition = null;
+                                // Keep hover position to continue showing preview for multiple clicks
+                                // hoverPosition remains unchanged so the preview continues to show
 
                                 drawBoard();
                                 // Don't update URL here - wait until drag ends
@@ -1020,11 +1020,18 @@
             });
 
             // Canvas mouseup handler for drag end
-            canvas.addEventListener('mouseup', () => {
+            canvas.addEventListener('mouseup', (event) => {
                 if (editMode && isDragging) {
                     isDragging = false;
                     dragState = null;
                     updateUrl(); // Update URL once at the end of drag
+
+                    // Restore hover position for continued preview
+                    const boardPos = getBoardPositionFromEvent(event);
+                    if (boardPos && isValidBoardPosition(boardPos.x, boardPos.y)) {
+                        hoverPosition = boardPos;
+                        drawBoard(); // Redraw to show the hover preview
+                    }
                 }
             });
 
@@ -1104,6 +1111,9 @@
                         isDragging = false;
                         dragState = null;
                         updateUrl(); // Update URL when drag ends
+
+                        // For touch, we don't maintain hover position since there's no persistent cursor
+                        // Touch interactions are discrete events
                     }
                 } else {
                     // Handle tap in normal mode
