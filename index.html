@@ -1935,8 +1935,9 @@
             ctx.fillStyle = '#000';
             const starRadius = Math.max(2, cellSize * 0.08); // Scale star point size with board
             for (let [sx, sy] of starPoints) {
-                const x = offsetX + sx * cellSize;
-                const y = offsetY + sy * cellSize;
+                // Use the same positioning logic as grid lines for perfect alignment
+                const x = Math.round(offsetX + sx * cellSize) + 0.5;
+                const y = Math.round(offsetY + sy * cellSize) + 0.5;
                 ctx.beginPath();
                 ctx.arc(x, y, starRadius, 0, 2 * Math.PI);
                 ctx.fill();
