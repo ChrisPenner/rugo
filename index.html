@@ -752,6 +752,10 @@
                     <button id="move-numbers-btn">🔢 Move Numbers: OFF</button>
                 </div>
                 <div class="setting-item">
+                    <div class="setting-label">Mobile</div>
+                    <button id="magnifier-below-btn">📍 Magnifier Below (White): OFF</button>
+                </div>
+                <div class="setting-item">
                     <div class="setting-label">Share</div>
                     <button id="copy-url-btn">📋 Copy Game State</button>
                 </div>
@@ -797,6 +801,7 @@
         let isDragging = false; // Track if we're currently dragging in edit mode
         let dragState = null; // The state to apply while dragging (0, 1, or 2)
         let showMoveNumbers = false; // Track whether to display move numbers on stones
+        let magnifierBelowForWhite = true; // Track whether to show magnifier below for white player
 
         // Sound system for game audio feedback
         class SoundSystem {
@@ -1020,7 +1025,8 @@
             wakeLockEnabled: 'wake_lock_enabled',
             preferredBoardSize: 'preferred_board_size',
             lastGameState: 'last_game_state',
-            moveNumbersEnabled: 'move_numbers_enabled'
+            moveNumbersEnabled: 'move_numbers_enabled',
+            magnifierBelowForWhite: 'magnifier_below_for_white'
         };
 
         // Function to save user preferences to localStorage
@@ -1369,6 +1375,12 @@
             showMoveNumbers = moveNumbersEnabled;
             const moveNumbersButton = document.getElementById('move-numbers-btn');
             moveNumbersButton.textContent = showMoveNumbers ? '🔢 Move Numbers: ON' : '🔢 Move Numbers: OFF';
+
+            // Restore magnifier below for white preference
+            const magnifierBelow = loadUserPreference(userPrefs.magnifierBelowForWhite, true);
+            magnifierBelowForWhite = magnifierBelow;
+            const magnifierBelowButton = document.getElementById('magnifier-below-btn');
+            magnifierBelowButton.textContent = magnifierBelowForWhite ? '📍 Magnifier Below (White): ON' : '📍 Magnifier Below (White): OFF';
         }
 
         // Function to update wake lock button text
@@ -1576,14 +1588,28 @@
             let magnifierScale = 2.0; // Magnification level
 
             function showMagnifier(touch) {
-                // Position the magnifier above the finger
+                // Position the magnifier above the finger (or below for white if setting is enabled)
                 const magnifierWidth = 180;
                 const magnifierHeight = 180;
-                const offsetY = magnifierHeight + 30; // Space above finger
+
+                // Check if we should position below for white player
+                const currentPlayer = game.get_current_player();
+                const isWhitePlayer = currentPlayer === 2;
+                const shouldPositionBelow = isWhitePlayer && magnifierBelowForWhite;
+
+                const verticalOffset = magnifierHeight + 30; // Space above/below finger
 
                 // Get touch position relative to viewport (clientX/Y for absolute positioning)
                 let x = touch.clientX - magnifierWidth / 2;
-                let y = touch.clientY - offsetY;
+                let y;
+
+                if (shouldPositionBelow) {
+                    // Position below the finger for white player (30px gap below, mirroring black's 30px gap above)
+                    y = touch.clientY + 30;
+                } else {
+                    // Position above the finger for black player (default)
+                    y = touch.clientY - verticalOffset;
+                }
 
                 // Keep magnifier within viewport horizontally, but allow vertical clipping
                 const viewportWidth = window.innerWidth;
@@ -2290,6 +2316,18 @@
                 }
 
                 console.log('Move numbers:', showMoveNumbers ? 'ON' : 'OFF');
+            });
+
+            // Magnifier below for white toggle button
+            document.getElementById('magnifier-below-btn').addEventListener('click', () => {
+                magnifierBelowForWhite = !magnifierBelowForWhite;
+                const button = document.getElementById('magnifier-below-btn');
+                button.textContent = magnifierBelowForWhite ? '📍 Magnifier Below (White): ON' : '📍 Magnifier Below (White): OFF';
+
+                // Save preference
+                saveUserPreference(userPrefs.magnifierBelowForWhite, magnifierBelowForWhite);
+
+                console.log('Magnifier below for white:', magnifierBelowForWhite ? 'ON' : 'OFF');
             });
 
             // Settings modal functionality
