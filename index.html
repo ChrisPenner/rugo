@@ -1755,6 +1755,9 @@
             canvas.addEventListener('touchstart', (event) => {
                 event.preventDefault(); // Prevent scrolling
 
+                // Always hide magnifier when starting a new touch
+                hideMagnifier();
+
                 if (editMode) {
                     // In edit mode, start dragging immediately
                     handleBoardInteraction(event);
@@ -1847,9 +1850,10 @@
                         clearTimeout(canvas._magnifierTimeout);
                         delete canvas._magnifierTimeout;
                     }
-
-                    hideMagnifier(); // Hide magnifier when touch ends
                 }
+
+                // Always hide magnifier when touch ends - this ensures it's cleared in all cases
+                hideMagnifier();
             });
 
             // Prevent context menu on touch devices
